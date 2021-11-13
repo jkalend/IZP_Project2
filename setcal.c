@@ -23,6 +23,7 @@ universe_t;
 typedef struct{
     int *items;
     int set_len;
+    int index;
     /*
 
     add line number
@@ -118,6 +119,20 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
     return END_OF_LINE;
 }
 
+int checkUniverse(char *str, universe_t *universe)
+{
+    for(int i = 0; i < universe->universe_len-1; i++)
+    {
+        if (strcmp(universe->items[i], str) == 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+
 int readUniverse(universe_t *universe, FILE *file)
 {
     universe->universe_len = 0;
@@ -148,12 +163,18 @@ int readUniverse(universe_t *universe, FILE *file)
                 free(str);
                 return errMsg("Reallocation failed.\n", false);
             }
+
+            if (!checkUniverse(str, universe))
+            {
+                free(str);
+                return errMsg("Duplicity in universe\n", false);
+            }
             universe->items[universe->universe_len - 1] = str;
         }
        
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the universe
+    // if the loop finishes, we successfully read the universe
     return true;
 }
 
