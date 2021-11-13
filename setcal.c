@@ -24,11 +24,6 @@ typedef struct{
     int *items;
     int set_len;
     int index;
-    /*
-
-    add line number
-
-    */
 }
 set_t;
 
@@ -50,11 +45,7 @@ relationUnit_t;
 typedef struct {
     relationUnit_t *items;
     int relation_len;
-    /*
-
-    add line number
-
-    */
+    int index;
 }
 relation_t;
 
@@ -82,7 +73,7 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
     // allocate memory for the string
     *string = malloc((MAX_STR_LEN + 1) * sizeof(char));
     if (*string == NULL) 
-        return errMsg("Allocation failed.\n", false);
+        return errMsg("Allocation failed\n", false);
 
     *string[0] = '\0';
 
@@ -92,7 +83,7 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
         // check if the maximum length wasn't reached
         if (strLen > MAX_STR_LEN)
         {
-            return errMsg("Items cannot be more than 30 characters long.\n", false);
+            return errMsg("Items cannot be more than 30 characters long\n", false);
         }
 
         // reached the delimiting character or newline/EOF -> current string is complete
@@ -130,8 +121,6 @@ int checkUniverse(char *str, universe_t *universe)
     }
     return true;
 }
-
-
 
 int readUniverse(universe_t *universe, FILE *file)
 {
@@ -189,7 +178,7 @@ int findUniverseIndex(char *str, universe_t *universe)
         }
     }
 
-    // the item wasn't found in the universe so it's an invalid item
+    // the item wasn't found in the universe, so it's an invalid item
     return INVALID_INDEX;
 }
 
@@ -201,12 +190,12 @@ int readIndexedItem(int *idx, FILE *file, universe_t *universe, char delimStart,
     if (!status) 
     {
         free(str);
-        return INVALID_INDEX; // an error occured while reading the string
+        return INVALID_INDEX; // an error occurred while reading the string
     }
 
     else
     {
-        // when using this function with relations, the newline character gets saved seperately
+        // when using this function with relations, the newline character gets saved separately
         if (strlen(str) == 0) 
         {
             free(str);
@@ -225,7 +214,7 @@ int readIndexedItem(int *idx, FILE *file, universe_t *universe, char delimStart,
     }
 }
 
-int readSet(set_t *set, FILE *file, universe_t *universe)
+int readSet(set_t *set, FILE *file, universe_t *universe, int index)
 {
     set->set_len = 0;
     int idx, status;
@@ -249,17 +238,24 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
             }
 
             if (set->items == NULL)
-                return errMsg("Allocation failed.\n", false);
+                return errMsg("Allocation failed\n", false);
+
+            for(int i = 0; i < set->set_len-1; i++)
+            {
+                if (set->items[i] == idx)
+                    return errMsg("Duplicity in a set\n", false);
+            }
 
             set->items[set->set_len - 1] = idx;
+            set->index = index;
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the set
+    // if the loop finishes, we successfully read the set
     return true;
 }
 
-int readRelation(relation_t *relation, FILE *file, universe_t *universe)
+int readRelation(relation_t *relation, FILE *file, universe_t *universe, int index)
 {
     relation->relation_len = 0;
  
@@ -287,15 +283,22 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 
             if (relation->items == NULL) 
             {
-                return errMsg("Allocation failed.\n", false);
+                return errMsg("Allocation failed\n", false);
+            }
+
+            for(int i = 0; i < relation->relation_len-1; i++)
+            {
+                if (relation->items[i].x == idx || relation->items[i].y == idy)
+                    return errMsg("Duplicity in a relation\n", false);
             }
 
             relation->items[relation->relation_len - 1].x = idx;
             relation->items[relation->relation_len - 1].y = idy;
+            relation->index = index;
         }
     } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the relation
+    // if the loop finishes, we successfully read the relation
     return true;
 }
 
@@ -310,7 +313,7 @@ void freeUniverse(universe_t *universe)
     free(universe->items);
 }
 
-// free all mallocated sets
+// free all malloced sets
 void freeSets(setList_t *sets)
 {
     if (sets->setList_len == 0) return; // the list is empty, nothing to free
@@ -325,7 +328,7 @@ void freeSets(setList_t *sets)
     free(sets->sets);
 }
 
-// free all mallocated relations
+// free all malloced relations
 void freeRelations(relationList_t *relations)
 {
     if (relations->relationList_len == 0) return; // the list is empty, nothing to free
@@ -340,7 +343,7 @@ void freeRelations(relationList_t *relations)
     free(relations->relations);
 }
 
-// delete later - only for validity checking
+// TODO ? delete later - only for validity checking
 void printUniverse(universe_t *universe)
 {
     printf("U ");
@@ -351,7 +354,7 @@ void printUniverse(universe_t *universe)
     printf("\n");
 }
 
-// delete later - only for validity checking
+// TODO ? delete later - only for validity checking
 void printSet(set_t *set, universe_t *universe)
 {
     printf("S ");
@@ -362,22 +365,22 @@ void printSet(set_t *set, universe_t *universe)
     printf("\n");
 }
 
-// delete later - only for validity checking
+// TODO ? delete later - only for validity checking
 void printRelation(relation_t *relation, universe_t *universe)
 {
     printf("R ");
     for (int i = 0; i < relation->relation_len; i++)
     {
-        printf("( %s %s ) ", universe->items[relation->items[i].x], universe->items[relation->items[i].y]);
+        printf("(%s %s) ", universe->items[relation->items[i].x], universe->items[relation->items[i].y]);
     }
     printf("\n");
 }
 
 
-
 int readFile(FILE *file)
 {
     char c;
+    int count = 0;
     universe_t universe;
     relationList_t relations;
     setList_t sets;
@@ -387,6 +390,7 @@ int readFile(FILE *file)
     
     while (fscanf(file, "%c", &c) != EOF)
     {
+        count++;
         switch (c)
         {
             case 'U': 
@@ -418,10 +422,14 @@ int readFile(FILE *file)
                     return errMsg("Allocation failed\n", EXIT_FAILURE);
                 }
 
-                if (readSet(&sets.sets[sets.setList_len - 1], file, &universe)) 
+                if (readSet(&sets.sets[sets.setList_len - 1], file, &universe, count))
                 { 
                     printSet(&sets.sets[sets.setList_len - 1], &universe);
-                } 
+                }
+                else
+                {
+                    return EXIT_FAILURE;
+                }
                 
                 break;
             }
@@ -442,10 +450,14 @@ int readFile(FILE *file)
                     return errMsg("Allocation failed\n", EXIT_FAILURE);
                 }
 
-                if (readRelation(&relations.relations[relations.relationList_len - 1], file, &universe)) 
+                if (readRelation(&relations.relations[relations.relationList_len - 1], file, &universe, count))
                 { 
                     printRelation(&relations.relations[relations.relationList_len - 1], &universe);
-                } 
+                }
+                else
+                {
+                    return EXIT_FAILURE;
+                }
                 break;
             }
             case 'C':
