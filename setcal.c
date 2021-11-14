@@ -383,20 +383,23 @@ long readIndex(FILE *file, int count)
 {
     char c;
     char *ptr;
-    long index;
+    long indexes[3], digit;
+    int order = 0;
     while (fscanf(file, "%c", &c) != EOF)
     {
         if (isdigit(c))
         {
-            index = strtol(&c, &ptr, 10);
-            if (index < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
-            else if (index > count) return EMPTY_INDEX; // TODO bonus
-            else return index;
+            digit = strtol(&c, &ptr, 10);
+            if (digit < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
+            else if (digit > count) return EMPTY_INDEX; // TODO bonus
+            else indexes[order] = digit;
         }
         else if (c == '\n')
-            return END_OF_LINE;
+            indexes[order] = '\n';
+
+        order++;
     }
-    return END_OF_LINE;
+    return *indexes;
 }
 
 // FIXME if this DOESNT work let me know as soon as possible
