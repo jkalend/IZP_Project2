@@ -376,6 +376,29 @@ void printRelation(relation_t *relation, universe_t *universe)
     printf("\n");
 }
 
+// returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
+// or contains other symbols than digits
+// on success returns the index as a long int
+long readIndex(FILE *file, int count)
+{
+    char c;
+    char *ptr;
+    long index;
+    while (fscanf(file, "%c", &c) != EOF)
+    {
+        if (isdigit(c))
+        {
+            index = strtol(&c, &ptr, 10);
+            if (index < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
+            else if (index > count) return EMPTY_INDEX; // TODO bonus
+            else return index;
+        }
+        else if (c == '\n')
+            return END_OF_LINE;
+    }
+    return END_OF_LINE;
+}
+
 // FIXME if this DOESNT work let me know as soon as possible
 int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count)
 {
@@ -419,28 +442,6 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
 
 }
 
-// returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
-// or contains other symbols than digits
-// on success returns the index as a long int
-long readIndex(FILE *file, int count)
-{
-    char c;
-    char *ptr;
-    long index;
-    while (fscanf(file, "%c", &c) != EOF)
-    {
-        if (isdigit(c))
-        {
-            index = strtol(&c, &ptr, 10);
-            if (index < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
-            else if (index > count) return EMPTY_INDEX; // TODO bonus
-            else return index;
-        }
-        else if (c == '\n')
-            return END_OF_LINE;
-    }
-    return END_OF_LINE;
-}
 
 int readFile(FILE *file)
 {
