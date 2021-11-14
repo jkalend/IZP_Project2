@@ -289,7 +289,9 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe, int ind
 
             for(int i = 0; i < relation->relation_len-1; i++)
             {
-                if (relation->items[i].x == idx || relation->items[i].y == idy)
+                if (relation->items[i].x == idx && relation->items[i].y == idx)
+                    return errMsg("Duplicity in a relation\n", false);
+                else if (relation->items[i].x == idy && relation->items[i].y == idy)
                     return errMsg("Duplicity in a relation\n", false);
             }
 
@@ -546,6 +548,7 @@ int readFile(FILE *file)
 
             default:
             {
+                // TODO doesnt free stuff when an error is encountered
                 freeUniverse(&universe);
                 freeRelations(&relations);
                 freeSets(&sets);
