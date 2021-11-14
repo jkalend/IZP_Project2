@@ -1,4 +1,4 @@
-U a b z c x y z
+U a b c x y z
 S a b c x
 S x y z
 C intersect 2 3

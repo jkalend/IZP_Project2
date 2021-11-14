@@ -25,7 +25,7 @@ universe_t;
 typedef struct{
     int *items;
     int set_len;
-    int index;
+    long index;
 }
 set_t;
 
@@ -47,7 +47,7 @@ relationUnit_t;
 typedef struct {
     relationUnit_t *items;
     int relation_len;
-    int index;
+    long index;
 }
 relation_t;
 
