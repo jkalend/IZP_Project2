@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h> // for seeding random
 
 #define DELIM           ' '
@@ -9,6 +10,7 @@
 #define MAX_NUM_LINES   1000
 #define END_OF_LINE     -1
 #define INVALID_INDEX   -2
+#define EMPTY_INDEX     -3
 
 // STRUCTURES
 
@@ -64,7 +66,6 @@ int errMsg(char *msg, int status)
     fprintf(stderr, "%s", msg);
     return status;
 }
-
 
 int readStringFromFile(FILE *file, char **string, char delimStart, char delimStop)
 {
@@ -302,7 +303,6 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe, int ind
     return true;
 }
 
-
 // free the universe struct
 void freeUniverse(universe_t *universe)
 {
@@ -376,6 +376,71 @@ void printRelation(relation_t *relation, universe_t *universe)
     printf("\n");
 }
 
+// FIXME if this DOESNT work let me know as soon as possible
+int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count)
+{
+    char *command = malloc(sizeof(char));
+    char c;
+
+    if (command == NULL)
+        return errMsg("Allocation failed\n", false);
+
+    command[0] = '\0';
+
+    int length = 0;
+    while(fscanf(file, "%c", &c))
+    {
+        if (length != 0 && command[length] != DELIM)
+        {
+            command = realloc(command, (length+1) * sizeof(char));
+            if (command == NULL)
+                return errMsg("Reallocation failed\n", false);
+
+            command[length-1] = c;
+            command[length] = '\0';
+        }
+        else if (length != 0 && command[length] == DELIM)
+        {
+            break;
+        }
+        length++;
+    }
+    /*
+     *
+     * selection of the wanted command
+     * use char *command to decide which command is required
+     * within these functions use the readIndex() to get indexes of the required lines
+     * enter their data through setList->sets[index].items[i]
+     * or relationsList->relations[index].items[i]
+     *
+     */
+    free(command);
+    return true;
+
+}
+
+// returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
+// or contains other symbols than digits
+// on success returns the index as a long int
+long readIndex(FILE *file, int count)
+{
+    char c;
+    char *ptr;
+    long index;
+    while (fscanf(file, "%c", &c) != EOF)
+    {
+        if (isdigit(c))
+        {
+            index = strtol(&c, &ptr, 10);
+            if (index < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
+            else if (index > count) return EMPTY_INDEX; // TODO bonus
+            else return index;
+        }
+        else if (c == '\n')
+            return END_OF_LINE;
+    }
+    return END_OF_LINE;
+}
 
 int readFile(FILE *file)
 {
@@ -463,9 +528,15 @@ int readFile(FILE *file)
             case 'C':
             {
                 /*
-
-                    READ COMMANDS
-
+                //I suppose prints will happen in each function
+                if (readCommands(&universe, &relations, &sets, file, count))
+                {
+                    break;
+                }
+                else
+                {
+                    return EXIT_FAILURE;
+                }
                 */
             }
 
