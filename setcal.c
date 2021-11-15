@@ -58,14 +58,117 @@ typedef struct{
 }
 relationList_t;
 
-
-
 // function for printing error messages to stderr
 int errMsg(char *msg, int status)
 {
     fprintf(stderr, "%s", msg);
     return status;
 }
+
+//FIXME temporary
+void empty (set_t *set, setList_t *list, long x)
+{
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x && !list->sets[i].set_len)
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+    /* //when set is chosen before !!ideal
+    if (!set->set_len) {
+        printf("true\n");
+    }
+    printf("false\n");
+     */
+}
+
+void card (set_t *set, setList_t *list, long x)
+{
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x)
+        {
+            printf("%d\n", list->sets[i].set_len);
+            return;
+        }
+    }
+    /*
+    printf("%d\n", set->set_len);
+     */
+}
+
+int complement (universe_t *universe, set_t *set, setList_t *list, long x)
+{
+    int *wholeSet = 0;
+    if (universe->universe_len != 0) {
+        wholeSet = malloc(universe->universe_len * sizeof(int));
+    }
+    if (wholeSet == NULL)
+        return errMsg("Allocation failed\n", false);
+
+    printf("S ");
+    for (int i = 0; i < list->setList_len; i++) //FIXME not needed if set is supplied
+    {
+        if (list->sets[i].index == x)
+        {
+            /*
+            for (int o = 0; o < universe->universe_len; o++)
+            {
+                wholeSet[o] = o;
+            }
+             */
+            for (int o = 0; o < set->set_len; o++)
+            {
+                wholeSet[set->items[o]] = -1;
+            }
+            for (int o = 0; o < universe->universe_len; o++)
+            {
+                if (wholeSet[o] != -1) printf("%s ", universe->items[o]);
+            }
+            printf("\n");
+            free(wholeSet);
+            return true;
+        }
+    }
+    return false;
+}
+
+void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
+{
+    /*
+    for (int i = 0; i < set1->set_len; i++)
+    {
+        if (set1->items[i] == set2->items[i])
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+     */
+    set_t s1;
+    set_t s2;
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x) s1 = list->sets[i];
+        else if (list->sets[i].index == y) s2 = list->sets[i];
+    }
+    for (int i = 0; i < s1.set_len; i++)
+    {
+        if (s1.items[i] == s2.items[i])
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+
+}
+
+
 
 int readStringFromFile(FILE *file, char **string, char delimStart, char delimStop)
 {
@@ -383,9 +486,10 @@ void printRelation(relation_t *relation, universe_t *universe)
 // on success returns the index as a long int
 long readIndex(FILE *file, int count)
 {
+    /*
     char c;
     char *ptr;
-    long indexes[3], digit;
+    long indexes[2], digit;
     int order = 0;
     while (fscanf(file, "%c", &c) != EOF)
     {
@@ -397,7 +501,23 @@ long readIndex(FILE *file, int count)
             else indexes[order] = digit;
         }
         else if (c == '\n')
-            indexes[order] = '\n';
+            break;
+
+        order++;
+    }
+    return *indexes;
+     */
+
+    char *idx;
+    char *ptr;
+    long indexes[2], digit;
+    int order = 0;
+    while (readStringFromFile(file, &idx, DELIM, DELIM) != END_OF_LINE)
+    {
+        digit = strtol(idx, &ptr, 10);
+        if (digit < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
+        else if (digit > count) return EMPTY_INDEX; // TODO bonus
+        else indexes[order] = digit;
 
         order++;
     }
@@ -407,32 +527,11 @@ long readIndex(FILE *file, int count)
 // FIXME if this DOESNT work let me know as soon as possible
 int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count)
 {
-    char *command = malloc(sizeof(char));
-    char c;
-
-    if (command == NULL)
-        return errMsg("Allocation failed\n", false);
-
-    command[0] = '\0';
-
-    int length = 0;
-    while(fscanf(file, "%c", &c))
-    {
-        if (length != 0 && command[length] != DELIM)
-        {
-            command = realloc(command, (length+1) * sizeof(char));
-            if (command == NULL)
-                return errMsg("Reallocation failed\n", false);
-
-            command[length-1] = c;
-            command[length] = '\0';
-        }
-        else if (length != 0 && command[length] == DELIM)
-        {
-            break;
-        }
-        length++;
-    }
+    char *command;
+    int status;
+    status = readStringFromFile(file, &command, DELIM, DELIM);
+    if (status == END_OF_LINE) return true; //TODO not needed?
+    else if (status == INVALID_INDEX) return false;
     /*
      *
      * selection of the wanted command
