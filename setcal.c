@@ -58,6 +58,104 @@ typedef struct{
 }
 relationList_t;
 
+//FIXME temporary
+void empty (set_t *set, setList_t *list, long x)
+{
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x && !list->sets[i].set_len)
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+    /* //when set is chosen before !!ideal
+    if (!set->set_len) {
+        printf("true\n");
+    }
+    printf("false\n");
+     */
+}
+
+void card (set_t *set, setList_t *list, long x)
+{
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x)
+        {
+            printf("%d\n", list->sets[i].set_len);
+            return;
+        }
+    }
+    /*
+    printf("%d\n", set->set_len);
+     */
+}
+
+void complement (universe_t *universe, set_t *set, setList_t *list, long x)
+{
+    int *wholeSet;
+    if (universe->universe_len != 0) {
+        wholeSet = malloc(universe->universe_len * sizeof(int));
+    }
+
+    printf("S ");
+    for (int i = 0; i < list->setList_len; i++) //FIXME not needed if set is supplied
+    {
+        if (list->sets[i].index == x)
+        {
+            /*
+            for (int o = 0; o < universe->universe_len; o++)
+            {
+                wholeSet[o] = o;
+            }
+             */
+            for (int o = 0; o < set->set_len; o++)
+            {
+                wholeSet[set->items[o]] = -1;
+            }
+            for (int o = 0; o < universe->universe_len; o++)
+            {
+                if (wholeSet[o] != -1) printf("%s ", universe->items[o]);
+            }
+            printf("\n");
+            return;
+        }
+    }
+}
+
+void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
+{
+    /*
+    for (int i = 0; i < set1->set_len; i++)
+    {
+        if (set1->items[i] == set2->items[i])
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+     */
+    set_t s1;
+    set_t s2;
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x) s1 = list->sets[i];
+        else if (list->sets[i].index == y) s2 = list->sets[i];
+    }
+    for (int i = 0; i < s1.set_len; i++)
+    {
+        if (s1.items[i] == s2.items[i])
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+
+}
 
 
 // function for printing error messages to stderr
@@ -385,7 +483,7 @@ long readIndex(FILE *file, int count)
 {
     char c;
     char *ptr;
-    long indexes[3], digit;
+    long indexes[2], digit;
     int order = 0;
     while (fscanf(file, "%c", &c) != EOF)
     {
@@ -397,7 +495,7 @@ long readIndex(FILE *file, int count)
             else indexes[order] = digit;
         }
         else if (c == '\n')
-            indexes[order] = '\n';
+            break;
 
         order++;
     }
