@@ -486,6 +486,7 @@ void printRelation(relation_t *relation, universe_t *universe)
 // on success returns the index as a long int
 long readIndex(FILE *file, int count)
 {
+    /*
     char c;
     char *ptr;
     long indexes[2], digit;
@@ -505,37 +506,32 @@ long readIndex(FILE *file, int count)
         order++;
     }
     return *indexes;
+     */
+
+    char *idx;
+    char *ptr;
+    long indexes[2], digit;
+    int order = 0;
+    while (readStringFromFile(file, &idx, DELIM, DELIM) != END_OF_LINE)
+    {
+        digit = strtol(idx, &ptr, 10);
+        if (digit < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
+        else if (digit > count) return EMPTY_INDEX; // TODO bonus
+        else indexes[order] = digit;
+
+        order++;
+    }
+    return *indexes;
 }
 
 // FIXME if this DOESNT work let me know as soon as possible
 int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count)
 {
-    char *command = malloc(sizeof(char));
-    char c;
-
-    if (command == NULL)
-        return errMsg("Allocation failed\n", false);
-
-    command[0] = '\0';
-
-    int length = 0;
-    while(fscanf(file, "%c", &c))
-    {
-        if (length != 0 && command[length] != DELIM)
-        {
-            command = realloc(command, (length+1) * sizeof(char));
-            if (command == NULL)
-                return errMsg("Reallocation failed\n", false);
-
-            command[length-1] = c;
-            command[length] = '\0';
-        }
-        else if (length != 0 && command[length] == DELIM)
-        {
-            break;
-        }
-        length++;
-    }
+    char *command;
+    int status;
+    status = readStringFromFile(file, &command, DELIM, DELIM);
+    if (status == END_OF_LINE) return true; //TODO not needed?
+    else if (status == INVALID_INDEX) return false;
     /*
      *
      * selection of the wanted command
