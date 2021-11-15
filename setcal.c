@@ -58,6 +58,13 @@ typedef struct{
 }
 relationList_t;
 
+// function for printing error messages to stderr
+int errMsg(char *msg, int status)
+{
+    fprintf(stderr, "%s", msg);
+    return status;
+}
+
 //FIXME temporary
 void empty (set_t *set, setList_t *list, long x)
 {
@@ -93,12 +100,14 @@ void card (set_t *set, setList_t *list, long x)
      */
 }
 
-void complement (universe_t *universe, set_t *set, setList_t *list, long x)
+int complement (universe_t *universe, set_t *set, setList_t *list, long x)
 {
-    int *wholeSet;
+    int *wholeSet = 0;
     if (universe->universe_len != 0) {
         wholeSet = malloc(universe->universe_len * sizeof(int));
     }
+    if (wholeSet == NULL)
+        return errMsg("Allocation failed\n", false);
 
     printf("S ");
     for (int i = 0; i < list->setList_len; i++) //FIXME not needed if set is supplied
@@ -121,9 +130,10 @@ void complement (universe_t *universe, set_t *set, setList_t *list, long x)
             }
             printf("\n");
             free(wholeSet);
-            return;
+            return true;
         }
     }
+    return false;
 }
 
 void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
@@ -159,12 +169,6 @@ void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
 }
 
 
-// function for printing error messages to stderr
-int errMsg(char *msg, int status)
-{
-    fprintf(stderr, "%s", msg);
-    return status;
-}
 
 int readStringFromFile(FILE *file, char **string, char delimStart, char delimStop)
 {
