@@ -102,24 +102,21 @@ void card (set_t *set, setList_t *list, long x)
 
 int complement (universe_t *universe, set_t *set, setList_t *list, long x)
 {
-    int *wholeSet = 0;
-    if (universe->universe_len != 0) {
-        wholeSet = malloc(universe->universe_len * sizeof(int));
-    }
+    int *wholeSet = NULL;
+    wholeSet = realloc(wholeSet, universe->universe_len * sizeof(int));
     if (wholeSet == NULL)
         return errMsg("Allocation failed\n", false);
 
     printf("S ");
     for (int i = 0; i < list->setList_len; i++) //FIXME not needed if set is supplied
     {
-        if (list->sets[i].index == x)
+        if (list->sets[i].index == x) // FIXME same here
         {
-            /*
+
             for (int o = 0; o < universe->universe_len; o++)
             {
                 wholeSet[o] = o;
             }
-             */
             for (int o = 0; o < set->set_len; o++)
             {
                 wholeSet[set->items[o]] = -1;
@@ -133,7 +130,7 @@ int complement (universe_t *universe, set_t *set, setList_t *list, long x)
             return true;
         }
     }
-    return false;
+    return true;
 }
 
 void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
@@ -168,6 +165,81 @@ void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
 
 }
 
+int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y) // BEWARE!!
+{
+    int len;
+    int *uni = NULL;
+    uni = realloc(uni, set1->set_len * sizeof (int));
+    if (uni == NULL)
+        return errMsg("Allocation failed\n", false);
+
+    len = set1->set_len;
+
+    memcpy(uni, set1->items, set1->set_len * sizeof(int));
+
+    int j;
+    for (int i = 0; i < set2->set_len; i++)
+    {
+        for (j = 0; j < set1->set_len; j++)
+        {
+            if (set1->items[j] == set2->items[i])
+            {
+                j = 0;
+                break;
+            }
+        }
+        if(j != 0)
+        {
+            len++;
+            uni = realloc(uni, len * sizeof(int));
+            if (uni == NULL)
+                return errMsg("Allocation failed\n", false);
+
+            memcpy(&uni[len-1], &set2->items[i], sizeof(int));
+            // uni[len-1] = set2->items[i];
+        }
+
+    }
+
+    printf("S ");
+    for(int i = 0; i < len; i++)
+    {
+        printf("%s ", universe->items[uni[i]]);
+    }
+    printf("\n");
+    free(uni);
+    return true;
+
+}
+
+int minus(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y)
+{
+    int *min = NULL;
+    min = realloc(min, set1->set_len * sizeof(int));
+
+    if (min == NULL)
+        return errMsg("Allocation failed\n", false);
+
+    memcpy(min, set1->items, set1->set_len * sizeof(int));
+
+    printf("S ");
+    for(int i = 0; i < set1->set_len; i++)
+    {
+        for(int j = 0; j < set2->set_len; j++)
+        {
+            if (set1->items[i] == set2->items[j])
+            {
+                min[i] = EMPTY_INDEX;
+                break;
+            }
+        }
+        if (min[i] != EMPTY_INDEX)
+            printf("%s ", universe->items[min[i]]);
+    }
+    printf("\n");
+    free(min);
+    return true;
+}
 
 
 int readStringFromFile(FILE *file, char **string, char delimStart, char delimStop)
