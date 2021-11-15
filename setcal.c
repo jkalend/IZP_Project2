@@ -120,6 +120,7 @@ void complement (universe_t *universe, set_t *set, setList_t *list, long x)
                 if (wholeSet[o] != -1) printf("%s ", universe->items[o]);
             }
             printf("\n");
+            free(wholeSet);
             return;
         }
     }
