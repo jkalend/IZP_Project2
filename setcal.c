@@ -288,7 +288,7 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
 
 int checkUniverse(char *str, universe_t *universe)
 {
-    for(int i = 0; i < universe->universe_len-1; i++)
+    for(int i = 0; i < universe->universe_len - 1; i++)
     {
         if (strcmp(universe->items[i], str) == 0)
         {
@@ -301,6 +301,7 @@ int checkUniverse(char *str, universe_t *universe)
 int readUniverse(universe_t *universe, FILE *file)
 {
     universe->universe_len = 0;
+    universe->items = NULL;
     int status; char *str;
     do
     {
@@ -313,14 +314,7 @@ int readUniverse(universe_t *universe, FILE *file)
 
         else
         {
-            if (universe->universe_len == 0)
-            {
-                universe->items = malloc(++universe->universe_len * sizeof(char *));
-            }
-            else
-            {
-                universe->items = realloc(universe->items, ++universe->universe_len * sizeof(char *));
-            }
+            universe->items = realloc(universe->items, ++universe->universe_len * sizeof(char *));
             
             // check for memory errors
             if (universe->items == NULL)
@@ -390,9 +384,10 @@ int readIndexedItem(int *idx, FILE *file, universe_t *universe, char delimStart,
     }
 }
 
-int readSet(set_t *set, FILE *file, universe_t *universe, int index)
+int readSet(set_t *set, FILE *file, universe_t *universe)
 {
     set->set_len = 0;
+    set->items = NULL;
     int idx, status;
 
     do 
@@ -404,26 +399,18 @@ int readSet(set_t *set, FILE *file, universe_t *universe, int index)
 
         else
         {
-            if (set->set_len == 0)
-            {
-                set->items = malloc(++set->set_len * sizeof(int));
-            }
-            else
-            {
-                set->items = realloc(set->items, ++set->set_len * sizeof(int));
-            }
+            set->items = realloc(set->items, ++set->set_len * sizeof(int));
 
             if (set->items == NULL)
                 return errMsg("Allocation failed\n", false);
 
-            for(int i = 0; i < set->set_len-1; i++)
+            for(int i = 0; i < set->set_len - 1; i++)
             {
                 if (set->items[i] == idx)
                     return errMsg("Duplicity in a set\n", false);
             }
 
             set->items[set->set_len - 1] = idx;
-            set->index = index;
         }
     } while (status != END_OF_LINE);
 
@@ -431,9 +418,10 @@ int readSet(set_t *set, FILE *file, universe_t *universe, int index)
     return true;
 }
 
-int readRelation(relation_t *relation, FILE *file, universe_t *universe, int index)
+int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 {
     relation->relation_len = 0;
+    relation->items = NULL;
  
     int statusX, statusY, idx, idy;
     do
@@ -448,36 +436,66 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe, int ind
 
         else
         {
-            if (relation->relation_len == 0)
-            {
-                relation->items = malloc(++relation->relation_len * sizeof(relationUnit_t));
-            }
-            else
-            {
-                relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
-            }
+            relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
 
             if (relation->items == NULL) 
             {
                 return errMsg("Allocation failed\n", false);
             }
 
-            for(int i = 0; i < relation->relation_len-1; i++)
+            for(int i = 0; i < relation->relation_len - 1; i++)
             {
-                if (relation->items[i].x == idx && relation->items[i].y == idx)
-                    return errMsg("Duplicity in a relation\n", false);
-                else if (relation->items[i].x == idy && relation->items[i].y == idy)
+                if (relation->items[i].x == idx && relation->items[i].y == idy)
                     return errMsg("Duplicity in a relation\n", false);
             }
 
             relation->items[relation->relation_len - 1].x = idx;
             relation->items[relation->relation_len - 1].y = idy;
-            relation->index = index;
         }
     } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
 
     // if the loop finishes, we successfully read the relation
     return true;
+}
+
+int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
+{
+    relations->relations = realloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
+
+    // check for memory errors
+    if (relations->relations == NULL)
+    {
+        return errMsg("Allocation failed\n", false);
+    }
+
+    if (readRelation(&relations->relations[relations->relationList_len - 1], file, universe))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+int appendSet(setList_t *sets, universe_t *universe, FILE *file)
+{
+    sets->sets = realloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+
+    // check for memory error
+    if (sets->sets == NULL)
+    {
+        return errMsg("Allocation failed\n", false);
+    }
+
+    if (readSet(&sets->sets[sets->setList_len - 1], file, universe))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 // free the universe struct
@@ -628,7 +646,10 @@ int readFile(FILE *file)
     setList_t sets;
 
     relations.relationList_len = 0;
+    relations.relations = NULL;
+
     sets.setList_len = 0;
+    sets.sets = NULL;
     
     while (fscanf(file, "%c", &c) != EOF)
     {
@@ -649,23 +670,9 @@ int readFile(FILE *file)
             }
             case 'S': 
             {
-                if (sets.setList_len == 0)
+                if (appendSet(&sets, &universe, file))
                 {
-                    sets.sets = malloc(++sets.setList_len * sizeof(set_t));
-                }
-                else
-                {
-                    sets.sets = realloc(sets.sets, ++sets.setList_len * sizeof(set_t));
-                }
-
-                // check for memory error
-                if (sets.sets == NULL)
-                {
-                    return errMsg("Allocation failed\n", EXIT_FAILURE);
-                }
-
-                if (readSet(&sets.sets[sets.setList_len - 1], file, &universe, count))
-                { 
+                    sets.sets[sets.setList_len - 1].index = count;
                     printSet(&sets.sets[sets.setList_len - 1], &universe);
                 }
                 else
@@ -677,29 +684,16 @@ int readFile(FILE *file)
             }
             case 'R':
             {
-                if (relations.relationList_len == 0)
+                if (appendRelation(&relations, &universe, file))
                 {
-                    relations.relations = malloc(++relations.relationList_len * sizeof(relation_t));
-                }
-                else
-                {
-                    relations.relations = realloc(relations.relations, ++relations.relationList_len * sizeof(relation_t));
-                }
-
-                // check for memory errors
-                if (relations.relations == NULL) 
-                {
-                    return errMsg("Allocation failed\n", EXIT_FAILURE);
-                }
-
-                if (readRelation(&relations.relations[relations.relationList_len - 1], file, &universe, count))
-                { 
+                    relations.relations[relations.relationList_len - 1].index = count;
                     printRelation(&relations.relations[relations.relationList_len - 1], &universe);
                 }
                 else
                 {
                     return EXIT_FAILURE;
                 }
+
                 break;
             }
             case 'C':
