@@ -242,14 +242,14 @@ int minus(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
 }
 
 
-int readStringFromFile(FILE *file, char **string, char delimStart, char delimStop)
+int readStringFromFile(FILE *file, char **string)
 {
     char c; int strLen = 0;
 
     // allocate memory for the string
     *string = malloc((MAX_STR_LEN + 1) * sizeof(char));
     if (*string == NULL) 
-        return errMsg("Allocation failed\n", false);
+        return errMsg("Allocation failed.\n", false);
 
     *string[0] = '\0';
 
@@ -259,11 +259,11 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
         // check if the maximum length wasn't reached
         if (strLen > MAX_STR_LEN)
         {
-            return errMsg("Items cannot be more than 30 characters long\n", false);
+            return errMsg("Items cannot be more than 30 characters long.\n", false);
         }
 
         // reached the delimiting character or newline/EOF -> current string is complete
-        else if ((c == delimStop && strLen != 0) || c == '\n')
+        else if ((c == DELIM && strLen != 0) || c == '\n')
         {
             // resize the string to it's true value
             *string = realloc(*string, (strLen + 1) * sizeof(char));
@@ -277,7 +277,7 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
         }
 
          // the start condition is met and all whitespace is gone -> start adding characters to the string
-        else if (c != delimStart && c != DELIM)
+        else if (c != DELIM)
         {
             (*string)[strLen] = c;
             (*string)[++strLen] = '\0';
@@ -306,7 +306,7 @@ int readUniverse(universe_t *universe, FILE *file)
     do
     {
         // try reading a string from the specified file
-        status = readStringFromFile(file, &str, DELIM, DELIM);
+        status = readStringFromFile(file, &str);
 
          // an error occured while reading the file
         if (!status)
@@ -352,69 +352,49 @@ int findUniverseIndex(char *str, universe_t *universe)
     return INVALID_INDEX;
 }
 
-int readIndexedItem(int *idx, FILE *file, universe_t *universe, char delimStart, char delimStop)
-{
-    char *str;
-    int status = readStringFromFile(file, &str, delimStart, delimStop);
-
-    if (!status) 
-    {
-        free(str);
-        return INVALID_INDEX; // an error occurred while reading the string
-    }
-
-    else
-    {
-        // when using this function with relations, the newline character gets saved separately
-        if (strlen(str) == 0) 
-        {
-            free(str);
-            return END_OF_LINE;
-        }
-        
-        int i = findUniverseIndex(str, universe);
-        free(str);
-
-        if (i != INVALID_INDEX) 
-        {
-            *idx = i;
-            return status;
-        }
-        else return errMsg("The set/relation contains items that do not belong in the universe\n", INVALID_INDEX);
-    }
-}
-
 int readSet(set_t *set, FILE *file, universe_t *universe)
 {
     set->set_len = 0;
     set->items = NULL;
-    int idx, status;
 
-    do 
+    int idx, status;    char *str;
+
+    do
     {
-        status = readIndexedItem(&idx, file, universe, DELIM, DELIM);
+        status = readStringFromFile(file, &str);
 
-        if (status == INVALID_INDEX)
-            return false;
-
+        if (!status)
+        {
+            free(str);
+            return errMsg("Error while reading file.\n", false);
+        }
         else
         {
-            set->items = realloc(set->items, ++set->set_len * sizeof(int));
+            idx = findUniverseIndex(str, universe);
+            free(str);
 
-            if (set->items == NULL)
-                return errMsg("Allocation failed\n", false);
-
-            for(int i = 0; i < set->set_len - 1; i++)
+            if (idx == INVALID_INDEX)
             {
-                if (set->items[i] == idx)
-                    return errMsg("Duplicity in a set\n", false);
+                return errMsg("The set contains items that are not part of the universe.\n", false);
             }
+            else
+            {
+                set->items = realloc(set->items, ++set->set_len * sizeof(int));
+                if (set->items == NULL)
+                    return errMsg("Allocation failed.\n", false);
 
-            set->items[set->set_len - 1] = idx;
+                for (int i = 0; i < set->set_len - 1; i++)
+                {
+                    if (set->items[i] == idx)
+                        return errMsg("Duplicity in a set\n", false);
+                }
+
+                set->items[set->set_len - 1] = idx;
+            }
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we successfully read the set
+    // if the loop finishes, we sucessfully read the set
     return true;
 }
 
@@ -422,39 +402,57 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 {
     relation->relation_len = 0;
     relation->items = NULL;
- 
+
     int statusX, statusY, idx, idy;
+    char *str;
     do
     {
-        statusX = readIndexedItem(&idx, file, universe, '(', DELIM);
-        if (statusX == INVALID_INDEX) return false;
-        else if (statusX == END_OF_LINE) break;
+        statusX = readStringFromFile(file, &str);
 
-        statusY = readIndexedItem(&idy, file, universe, DELIM, ')');
-        if (statusY == INVALID_INDEX) return false;
-        else if (statusY == END_OF_LINE) break;
+        // compare without opening brace
+        idx = findUniverseIndex(&str[1], universe);
+        free(str);
 
+        // if END_OF_LINE happens at this point, the relation would be incomplete
+        if (!statusX) return false;
+
+        else if (statusX == END_OF_LINE) return errMsg("Incomplete relation.\n", false);
+        
         else
         {
-            relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+            statusY = readStringFromFile(file, &str);
 
-            if (relation->items == NULL) 
+            if (!statusY)   return false;
+
+            // get rid of closing brace before the comparison
+            str[strlen(str) - 1] = '\0';
+            idy = findUniverseIndex(str, universe);
+            free(str);
+
+            if (idx != INVALID_INDEX && idy != INVALID_INDEX)
             {
-                return errMsg("Allocation failed\n", false);
-            }
+                relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+                if (relation->items == NULL)
+                {
+                    return errMsg("Allocation failed.\n", false);
+                }
 
-            for(int i = 0; i < relation->relation_len - 1; i++)
+                for (int i = 0; i < relation->relation_len - 1; i++)
+                {
+                    if (relation->items[i].x == idx && relation->items[i].y == idy)
+                        return errMsg("Duplicity in a relation\n", false);
+                }
+                relation->items[relation->relation_len - 1].x = idx;
+                relation->items[relation->relation_len - 1].y = idy;
+            }
+            else
             {
-                if (relation->items[i].x == idx && relation->items[i].y == idy)
-                    return errMsg("Duplicity in a relation\n", false);
+                return errMsg("The relation contains items that are not part of the universe.\n", false);
             }
-
-            relation->items[relation->relation_len - 1].x = idx;
-            relation->items[relation->relation_len - 1].y = idy;
         }
     } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
 
-    // if the loop finishes, we successfully read the relation
+    // if the loop finishes, we sucessfully read the relation
     return true;
 }
 
@@ -602,7 +600,7 @@ long readIndex(FILE *file, int count)
     char *ptr;
     long indexes[2], digit;
     int order = 0;
-    while (readStringFromFile(file, &idx, DELIM, DELIM) != END_OF_LINE)
+    while (readStringFromFile(file, &idx) != END_OF_LINE)
     {
         digit = strtol(idx, &ptr, 10);
         if (digit < 1 || *ptr != '\0') return errMsg("Command taking wrong index", false);
@@ -619,7 +617,7 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
 {
     char *command;
     int status;
-    status = readStringFromFile(file, &command, DELIM, DELIM);
+    status = readStringFromFile(file, &command);
     if (status == END_OF_LINE) return true; //TODO not needed?
     else if (status == INVALID_INDEX) return false;
     /*
