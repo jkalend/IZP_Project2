@@ -362,17 +362,12 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
     do
     {
         status = readStringFromFile(file, &str);
+        idx = findUniverseIndex(str, universe);
+        free(str);
 
-        if (!status)
-        {
-            free(str);
-            return errMsg("Error while reading file.\n", false);
-        }
+        if (!status)    return false;
         else
         {
-            idx = findUniverseIndex(str, universe);
-            free(str);
-
             if (idx == INVALID_INDEX)
             {
                 return errMsg("The set contains items that are not part of the universe.\n", false);
@@ -417,7 +412,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         if (!statusX) return false;
 
         else if (statusX == END_OF_LINE) return errMsg("Incomplete relation.\n", false);
-        
+
         else
         {
             statusY = readStringFromFile(file, &str);
