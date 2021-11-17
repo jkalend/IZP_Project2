@@ -1,0 +1,4 @@
+[submodule "tests"]
+	path = tests
+	url = https://github.com/JosefKuchar/tests-izp-projekt-2
+	branch = master
