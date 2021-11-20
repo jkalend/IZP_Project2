@@ -133,38 +133,6 @@ int complement (universe_t *universe, set_t *set, setList_t *list, long x)
     return true;
 }
 
-void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
-{
-    /*
-    for (int i = 0; i < set1->set_len; i++)
-    {
-        if (set1->items[i] == set2->items[i])
-        {
-            printf("true\n");
-            return;
-        }
-    }
-    printf("false\n");
-     */
-    set_t s1;
-    set_t s2;
-    for (int i = 0; i < list->setList_len; i++)
-    {
-        if (list->sets[i].index == x) s1 = list->sets[i];
-        else if (list->sets[i].index == y) s2 = list->sets[i];
-    }
-    for (int i = 0; i < s1.set_len; i++)
-    {
-        if (s1.items[i] == s2.items[i])
-        {
-            printf("true\n");
-            return;
-        }
-    }
-    printf("false\n");
-
-}
-
 int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y) // BEWARE!!
 {
     int len;
@@ -212,7 +180,24 @@ int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
 
 }
 
-int minus(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y)
+void intersect (universe_t *universe ,set_t *A, set_t *B)
+{ 
+    printf("S ");
+    for (int i = 0; i < A->set_len; i++)
+    {
+        for (int j = 0; j < B->set_len; j++)
+        {
+            if (A->items[i] == B->items[j])
+            {
+                printf("%s ", universe->items[A->items[i]]);
+                break;
+            }            
+        }
+    }
+    printf("\n");
+}
+
+int minus (universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y)
 {
     int *min = NULL;
     min = realloc(min, set1->set_len * sizeof(int));
@@ -241,6 +226,66 @@ int minus(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
     return true;
 }
 
+set_t subseteq (set_t *A, set_t *B, bool print)
+{
+  int count = 0;
+  for (int i = 0; i <A->set_len; i++)
+  {
+    for (int j = 0; j < B->set_len; j++)
+    {
+      if (A->items[i] == B->items[j])
+      {
+        count++;
+      }
+    }
+  }
+  set_t terminus = {.set_len = 0}; // pro naznaceni ze A neni podmnozinou
+  if (!print && count == A->set_len) return *A;
+  else if (!print && count != A->set_len) return terminus;  
+  if (count == A->set_len)
+  {
+    printf("true\n");
+  }
+  else
+  {
+    printf("false\n");
+  }
+  return terminus;
+}
+
+//TODO subset function HERE//
+
+void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
+{
+    /*
+    for (int i = 0; i < set1->set_len; i++)
+    {
+        if (set1->items[i] == set2->items[i])
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+     */
+    set_t s1;
+    set_t s2;
+    for (int i = 0; i < list->setList_len; i++)
+    {
+        if (list->sets[i].index == x) s1 = list->sets[i];
+        else if (list->sets[i].index == y) s2 = list->sets[i];
+    }
+    for (int i = 0; i < s1.set_len; i++)
+    {
+        if (s1.items[i] == s2.items[i])
+        {
+            printf("true\n");
+            return;
+        }
+    }
+    printf("false\n");
+
+}
 
 int readStringFromFile(FILE *file, char **string)
 {
