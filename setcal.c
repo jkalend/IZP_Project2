@@ -310,7 +310,18 @@ int readUniverse(universe_t *universe, FILE *file)
 
          // an error occured while reading the file
         if (!status)
+        {
+            free(str);
             return false;
+        }
+            
+
+        // empty universe
+        if (status == END_OF_LINE && strlen(str) == 0) 
+        {
+            free(str);
+            return true;
+        }
 
         else
         {
@@ -362,6 +373,10 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
     do
     {
         status = readStringFromFile(file, &str);
+
+        // empty set
+        if (strlen(str) == 0 && status == END_OF_LINE) return true;
+
         idx = findUniverseIndex(str, universe);
         free(str);
 
@@ -404,47 +419,42 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
     {
         statusX = readStringFromFile(file, &str);
 
+        if (!statusX) return false;
+        else if (statusX == END_OF_LINE && strlen(str) == 0) return true;
+        else if (str[0] != '(') return errMsg("Invalid relation.\n", false);
+
         // compare without opening brace
         idx = findUniverseIndex(&str[1], universe);
         free(str);
 
-        // if END_OF_LINE happens at this point, the relation would be incomplete
-        if (!statusX) return false;
+        statusY = readStringFromFile(file, &str);
 
-        else if (statusX == END_OF_LINE) return errMsg("Incomplete relation.\n", false);
+        if (!statusY) return false;
+        else if (str[strlen(str) - 1] != ')')
+            return errMsg("Invalid relation.\n", false);
 
-        else
+        // get rid of closing brace before the comparison
+        str[strlen(str) - 1] = '\0';
+        idy = findUniverseIndex(str, universe);
+        free(str);
+
+        if (idx == INVALID_INDEX || idy == INVALID_INDEX)
+            return errMsg("The relation contains items that are not part of the universe.\n", false);
+
+        relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+        if (relation->items == NULL)
         {
-            statusY = readStringFromFile(file, &str);
-
-            if (!statusY)   return false;
-
-            // get rid of closing brace before the comparison
-            str[strlen(str) - 1] = '\0';
-            idy = findUniverseIndex(str, universe);
-            free(str);
-
-            if (idx != INVALID_INDEX && idy != INVALID_INDEX)
-            {
-                relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
-                if (relation->items == NULL)
-                {
-                    return errMsg("Allocation failed.\n", false);
-                }
-
-                for (int i = 0; i < relation->relation_len - 1; i++)
-                {
-                    if (relation->items[i].x == idx && relation->items[i].y == idy)
-                        return errMsg("Duplicity in a relation\n", false);
-                }
-                relation->items[relation->relation_len - 1].x = idx;
-                relation->items[relation->relation_len - 1].y = idy;
-            }
-            else
-            {
-                return errMsg("The relation contains items that are not part of the universe.\n", false);
-            }
+            return errMsg("Allocation failed.\n", false);
         }
+
+        for (int i = 0; i < relation->relation_len - 1; i++)
+        {
+            if (relation->items[i].x == idx && relation->items[i].y == idy)
+                return errMsg("Duplicity in a relation\n", false);
+        }
+        relation->items[relation->relation_len - 1].x = idx;
+        relation->items[relation->relation_len - 1].y = idy;
+
     } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
 
     // if the loop finishes, we sucessfully read the relation
@@ -531,7 +541,7 @@ void freeRelations(relationList_t *relations)
     free(relations->relations);
 }
 
-// TODO ? delete later - only for validity checking
+// print universe contents
 void printUniverse(universe_t *universe)
 {
     printf("U ");
@@ -542,7 +552,7 @@ void printUniverse(universe_t *universe)
     printf("\n");
 }
 
-// TODO ? delete later - only for validity checking
+// print set contents
 void printSet(set_t *set, universe_t *universe)
 {
     printf("S ");
@@ -553,7 +563,7 @@ void printSet(set_t *set, universe_t *universe)
     printf("\n");
 }
 
-// TODO ? delete later - only for validity checking
+// print relation contents
 void printRelation(relation_t *relation, universe_t *universe)
 {
     printf("R ");
@@ -629,21 +639,23 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
 
 }
 
+// free all dynamic memory
+void destructor(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file)
+{
+    freeUniverse(universe);
+    freeRelations(relations);
+    freeSets(sets);
+    fclose(file);
+}
 
 int readFile(FILE *file)
 {
     char c;
     int count = 0;
     universe_t universe;
-    relationList_t relations;
-    setList_t sets;
+    relationList_t relations = {.relationList_len = 0, .relations = NULL};
+    setList_t sets = {.setList_len = 0, .sets = NULL};
 
-    relations.relationList_len = 0;
-    relations.relations = NULL;
-
-    sets.setList_len = 0;
-    sets.sets = NULL;
-    
     while (fscanf(file, "%c", &c) != EOF)
     {
         count++;
@@ -655,10 +667,12 @@ int readFile(FILE *file)
                 {
                     printUniverse(&universe); 
                 }  
-                else
+                else 
                 {
+                    destructor(&universe, &relations, &sets, file);
                     return EXIT_FAILURE;
                 }
+
                 break;
             }
             case 'S': 
@@ -670,9 +684,10 @@ int readFile(FILE *file)
                 }
                 else
                 {
+                    destructor(&universe, &relations, &sets, file);
                     return EXIT_FAILURE;
                 }
-                
+
                 break;
             }
             case 'R':
@@ -682,8 +697,9 @@ int readFile(FILE *file)
                     relations.relations[relations.relationList_len - 1].index = count;
                     printRelation(&relations.relations[relations.relationList_len - 1], &universe);
                 }
-                else
+                else 
                 {
+                    destructor(&universe, &relations, &sets, file);
                     return EXIT_FAILURE;
                 }
 
@@ -702,19 +718,17 @@ int readFile(FILE *file)
                     return EXIT_FAILURE;
                 }
                 */
+               break;
             }
 
             default:
             {
-                // TODO doesnt free stuff when an error is encountered
-                freeUniverse(&universe);
-                freeRelations(&relations);
-                freeSets(&sets);
-                fclose(file);
-                return 0;
+                destructor(&universe, &relations, &sets, file);
+                return errMsg("Invalid file structure.\n", EXIT_FAILURE);
             }
         }
     }
+    destructor(&universe, &relations, &sets, file);
     return 0;
     
 }
