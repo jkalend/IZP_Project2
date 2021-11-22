@@ -66,7 +66,7 @@ int errMsg(char *msg, int status)
 }
 
 // big brain time
-void *smartRealloc(void *ptr, size_t size)
+void *bigBrainRealloc(void *ptr, size_t size)
 {
     void *tmp = realloc(ptr, size);
     if (tmp == NULL)
@@ -116,7 +116,7 @@ void card (set_t *set, setList_t *list, long x)
 int complement (universe_t *universe, set_t *set, setList_t *list, long x)
 {
     int *wholeSet = NULL;
-    wholeSet = smartRealloc(wholeSet, universe->universe_len * sizeof(int));
+    wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
     if (wholeSet == NULL)
         return errMsg("Allocation failed\n", false);
 
@@ -150,7 +150,7 @@ int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
 {
     int len;
     int *uni = NULL;
-    uni = smartRealloc(uni, set1->set_len * sizeof (int));
+    uni = bigBrainRealloc(uni, set1->set_len * sizeof (int));
     if (uni == NULL)
         return errMsg("Allocation failed\n", false);
 
@@ -172,7 +172,7 @@ int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
         if(j != 0)
         {
             len++;
-            uni = smartRealloc(uni, len * sizeof(int));
+            uni = bigBrainRealloc(uni, len * sizeof(int));
             if (uni == NULL)
                 return errMsg("Allocation failed\n", false);
 
@@ -213,7 +213,7 @@ void intersect (universe_t *universe ,set_t *A, set_t *B)
 int minus (universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y)
 {
     int *min = NULL;
-    min = smartRealloc(min, set1->set_len * sizeof(int));
+    min = bigBrainRealloc(min, set1->set_len * sizeof(int));
 
     if (min == NULL)
         return errMsg("Allocation failed\n", false);
@@ -327,7 +327,7 @@ int readStringFromFile(FILE *file, char **string)
         else if ((c == DELIM && strLen != 0) || c == '\n')
         {
             // resize the string to it's true value
-            *string = smartRealloc(*string, (strLen + 1) * sizeof(char));
+            *string = bigBrainRealloc(*string, (strLen + 1) * sizeof(char));
 
             if (*string == NULL)
                 return errMsg("Reallocation failed\n", false);
@@ -386,7 +386,7 @@ int readUniverse(universe_t *universe, FILE *file)
 
         else
         {
-            universe->items = smartRealloc(universe->items, ++universe->universe_len * sizeof(char *));
+            universe->items = bigBrainRealloc(universe->items, ++universe->universe_len * sizeof(char *));
             
             // check for memory errors
             if (universe->items == NULL)
@@ -450,7 +450,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
             }
             else
             {
-                set->items = smartRealloc(set->items, ++set->set_len * sizeof(int));
+                set->items = bigBrainRealloc(set->items, ++set->set_len * sizeof(int));
                 if (set->items == NULL)
                     return errMsg("Allocation failed.\n", false);
 
@@ -502,7 +502,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         if (idx == INVALID_INDEX || idy == INVALID_INDEX)
             return errMsg("The relation contains items that are not part of the universe.\n", false);
 
-        relation->items = smartRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+        relation->items = bigBrainRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
         if (relation->items == NULL)
         {
             return errMsg("Allocation failed.\n", false);
@@ -524,7 +524,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 
 int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 {
-    relations->relations = smartRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
+    relations->relations = bigBrainRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
 
     // check for memory errors
     if (relations->relations == NULL)
@@ -544,7 +544,7 @@ int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 
 int appendSet(setList_t *sets, universe_t *universe, FILE *file)
 {
-    sets->sets = smartRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+    sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
 
     // check for memory error
     if (sets->sets == NULL)
@@ -742,7 +742,7 @@ int transitiveClosure(relation_t *relation, universe_t *universe)
                 relationUnit_t unit = {.x = tmp->items[i].x, .y = tmp->items[j].y};
                 if (!containsRelationUnit(tmp, &unit))
                 {
-                    tmp->items = smartRealloc(tmp->items, ++tmp->relation_len * sizeof(relationUnit_t));
+                    tmp->items = bigBrainRealloc(tmp->items, ++tmp->relation_len * sizeof(relationUnit_t));
                     if (tmp->items == NULL)
                     {
                         return errMsg("Allocation failed.\n", false);
