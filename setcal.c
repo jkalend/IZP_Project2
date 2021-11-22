@@ -65,6 +65,19 @@ int errMsg(char *msg, int status)
     return status;
 }
 
+// big brain time
+void *smartRealloc(void *ptr, size_t size)
+{
+    void *tmp = realloc(ptr, size);
+    if (tmp == NULL)
+    {
+        free(ptr);
+        return NULL;
+    }
+
+    else return tmp;
+}
+
 //FIXME temporary
 void empty (set_t *set, setList_t *list, long x)
 {
@@ -103,7 +116,7 @@ void card (set_t *set, setList_t *list, long x)
 int complement (universe_t *universe, set_t *set, setList_t *list, long x)
 {
     int *wholeSet = NULL;
-    wholeSet = realloc(wholeSet, universe->universe_len * sizeof(int));
+    wholeSet = smartRealloc(wholeSet, universe->universe_len * sizeof(int));
     if (wholeSet == NULL)
         return errMsg("Allocation failed\n", false);
 
@@ -137,7 +150,7 @@ int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
 {
     int len;
     int *uni = NULL;
-    uni = realloc(uni, set1->set_len * sizeof (int));
+    uni = smartRealloc(uni, set1->set_len * sizeof (int));
     if (uni == NULL)
         return errMsg("Allocation failed\n", false);
 
@@ -159,7 +172,7 @@ int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long 
         if(j != 0)
         {
             len++;
-            uni = realloc(uni, len * sizeof(int));
+            uni = smartRealloc(uni, len * sizeof(int));
             if (uni == NULL)
                 return errMsg("Allocation failed\n", false);
 
@@ -200,7 +213,7 @@ void intersect (universe_t *universe ,set_t *A, set_t *B)
 int minus (universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y)
 {
     int *min = NULL;
-    min = realloc(min, set1->set_len * sizeof(int));
+    min = smartRealloc(min, set1->set_len * sizeof(int));
 
     if (min == NULL)
         return errMsg("Allocation failed\n", false);
@@ -287,6 +300,9 @@ void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
 
 }
 
+
+
+
 int readStringFromFile(FILE *file, char **string)
 {
     char c; int strLen = 0;
@@ -311,7 +327,7 @@ int readStringFromFile(FILE *file, char **string)
         else if ((c == DELIM && strLen != 0) || c == '\n')
         {
             // resize the string to it's true value
-            *string = realloc(*string, (strLen + 1) * sizeof(char));
+            *string = smartRealloc(*string, (strLen + 1) * sizeof(char));
 
             if (*string == NULL)
                 return errMsg("Reallocation failed\n", false);
@@ -370,7 +386,7 @@ int readUniverse(universe_t *universe, FILE *file)
 
         else
         {
-            universe->items = realloc(universe->items, ++universe->universe_len * sizeof(char *));
+            universe->items = smartRealloc(universe->items, ++universe->universe_len * sizeof(char *));
             
             // check for memory errors
             if (universe->items == NULL)
@@ -434,7 +450,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
             }
             else
             {
-                set->items = realloc(set->items, ++set->set_len * sizeof(int));
+                set->items = smartRealloc(set->items, ++set->set_len * sizeof(int));
                 if (set->items == NULL)
                     return errMsg("Allocation failed.\n", false);
 
@@ -486,7 +502,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         if (idx == INVALID_INDEX || idy == INVALID_INDEX)
             return errMsg("The relation contains items that are not part of the universe.\n", false);
 
-        relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+        relation->items = smartRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
         if (relation->items == NULL)
         {
             return errMsg("Allocation failed.\n", false);
@@ -508,7 +524,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 
 int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 {
-    relations->relations = realloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
+    relations->relations = smartRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
 
     // check for memory errors
     if (relations->relations == NULL)
@@ -528,7 +544,7 @@ int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 
 int appendSet(setList_t *sets, universe_t *universe, FILE *file)
 {
-    sets->sets = realloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+    sets->sets = smartRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
 
     // check for memory error
     if (sets->sets == NULL)
@@ -682,6 +698,65 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
     free(command);
     return true;
 
+}
+
+bool containsRelationUnit(relation_t *relation, relationUnit_t *unit)
+{
+  for (int i = 0; i < relation->relation_len; i++)
+  {
+    if (relation->items[i].x == unit->x && relation->items[i].y == unit->y)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+relation_t *relationCopy(relation_t *relation)
+{
+    relation_t *tmp = malloc(sizeof(relation_t));
+    if (tmp == NULL) return NULL;
+
+    tmp->items = malloc(relation->relation_len * sizeof(relationUnit_t));
+    if (tmp->items == NULL) 
+    {
+        free(tmp);
+        return NULL;
+    }
+    memcpy(tmp->items, relation->items, relation->relation_len * sizeof(relationUnit_t));
+    tmp->relation_len = relation->relation_len;
+    return tmp;
+}
+
+int transitiveClosure(relation_t *relation, universe_t *universe)
+{
+    relation_t *tmp = relationCopy(relation);
+    if (tmp == NULL) return false;
+   
+    for (int i = 0; i < tmp->relation_len; i++)
+    {
+        for (int j = 0; j < tmp->relation_len; j++)
+        {
+            if (tmp->items[i].y == tmp->items[j].x)
+            {
+                relationUnit_t unit = {.x = tmp->items[i].x, .y = tmp->items[j].y};
+                if (!containsRelationUnit(tmp, &unit))
+                {
+                    tmp->items = smartRealloc(tmp->items, ++tmp->relation_len * sizeof(relationUnit_t));
+                    if (tmp->items == NULL)
+                    {
+                        return errMsg("Allocation failed.\n", false);
+                    }
+                    tmp->items[tmp->relation_len - 1].x = unit.x;
+                    tmp->items[tmp->relation_len - 1].y = unit.y;
+                }
+            }
+        }
+    }
+    printRelation(tmp, universe);
+    free(tmp->items);
+    free(tmp);
+    return true;
 }
 
 // free all dynamic memory
