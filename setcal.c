@@ -300,9 +300,6 @@ void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
 
 }
 
-
-
-
 int readStringFromFile(FILE *file, char **string)
 {
     char c; int strLen = 0;
@@ -522,6 +519,29 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
     return true;
 }
 
+int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
+{
+    if (readUniverse(universe, file))
+    {
+        sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+        if (sets->sets == NULL)
+            return false;
+
+        sets->sets[sets->setList_len - 1].items = malloc(universe->universe_len * sizeof(int));
+        if (sets->sets[sets->setList_len - 1].items == NULL)
+            return false;
+
+        for (int i = 0; i < universe->universe_len; i++)
+        {
+            sets->sets[sets->setList_len - 1].items[i] = i;
+        }
+        sets->sets[sets->setList_len - 1].set_len = universe->universe_len;
+
+        return true;
+    }
+    else return false;
+}
+
 int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 {
     relations->relations = bigBrainRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
@@ -712,50 +732,35 @@ bool containsRelationUnit(relation_t *relation, relationUnit_t *unit)
   return false;
 }
 
-relation_t *relationCopy(relation_t *relation)
-{
-    relation_t *tmp = malloc(sizeof(relation_t));
-    if (tmp == NULL) return NULL;
-
-    tmp->items = malloc(relation->relation_len * sizeof(relationUnit_t));
-    if (tmp->items == NULL) 
-    {
-        free(tmp);
-        return NULL;
-    }
-    memcpy(tmp->items, relation->items, relation->relation_len * sizeof(relationUnit_t));
-    tmp->relation_len = relation->relation_len;
-    return tmp;
-}
-
 int transitiveClosure(relation_t *relation, universe_t *universe)
 {
-    relation_t *tmp = relationCopy(relation);
-    if (tmp == NULL) return false;
-   
-    for (int i = 0; i < tmp->relation_len; i++)
+    relation_t tmp = {.items = NULL, .relation_len = relation->relation_len};
+    tmp.items = malloc(sizeof(relationUnit_t) * relation->relation_len);
+    if (tmp.items == NULL) return errMsg("Allocation failed.\n", false);
+
+    memcpy(tmp.items, relation->items, sizeof(relationUnit_t) * relation->relation_len);
+    for (int i = 0; i < tmp.relation_len; i++)
     {
-        for (int j = 0; j < tmp->relation_len; j++)
+        for (int j = 0; j < tmp.relation_len; j++)
         {
-            if (tmp->items[i].y == tmp->items[j].x)
+            if (tmp.items[i].y == tmp.items[j].x)
             {
-                relationUnit_t unit = {.x = tmp->items[i].x, .y = tmp->items[j].y};
-                if (!containsRelationUnit(tmp, &unit))
+                relationUnit_t unit = {.x = tmp.items[i].x, .y = tmp.items[j].y};
+                if (!containsRelationUnit(&tmp, &unit))
                 {
-                    tmp->items = bigBrainRealloc(tmp->items, ++tmp->relation_len * sizeof(relationUnit_t));
-                    if (tmp->items == NULL)
+                    tmp.items = bigBrainRealloc(tmp.items, ++tmp.relation_len * sizeof(relationUnit_t));
+                    if (tmp.items == NULL)
                     {
                         return errMsg("Allocation failed.\n", false);
                     }
-                    tmp->items[tmp->relation_len - 1].x = unit.x;
-                    tmp->items[tmp->relation_len - 1].y = unit.y;
+                    tmp.items[tmp.relation_len - 1].x = unit.x;
+                    tmp.items[tmp.relation_len - 1].y = unit.y;
                 }
             }
         }
     }
-    printRelation(tmp, universe);
-    free(tmp->items);
-    free(tmp);
+    printRelation(&tmp, universe);
+    free(tmp.items);
     return true;
 }
 
@@ -783,8 +788,9 @@ int readFile(FILE *file)
         {
             case 'U': 
             {
-                if (readUniverse(&universe, file))
+                if (appendUniverse(&universe, &sets, file))
                 {
+                    sets.sets[sets.setList_len - 1].index = count;
                     printUniverse(&universe); 
                 }  
                 else 
