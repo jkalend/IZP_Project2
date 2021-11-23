@@ -1,9 +1,12 @@
+///\file
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
 #include <time.h> // for seeding random
+
+//TODO rename set1, set2 -> A, B
 
 #define DELIM           ' '
 #define MAX_STR_LEN     30
@@ -79,41 +82,20 @@ void *bigBrainRealloc(void *ptr, size_t size)
 }
 
 //FIXME temporary
-void empty (set_t *set, setList_t *list, long x)
+void empty (set_t *set)
 {
-    for (int i = 0; i < list->setList_len; i++)
-    {
-        if (list->sets[i].index == x && !list->sets[i].set_len)
-        {
-            printf("true\n");
-            return;
-        }
-    }
-    printf("false\n");
-    /* //when set is chosen before !!ideal
     if (!set->set_len) {
         printf("true\n");
     }
     printf("false\n");
-     */
 }
 
-void card (set_t *set, setList_t *list, long x)
+void card (set_t *set)
 {
-    for (int i = 0; i < list->setList_len; i++)
-    {
-        if (list->sets[i].index == x)
-        {
-            printf("%d\n", list->sets[i].set_len);
-            return;
-        }
-    }
-    /*
     printf("%d\n", set->set_len);
-     */
 }
 
-int complement (universe_t *universe, set_t *set, setList_t *list, long x)
+int complement (universe_t *universe, set_t *set) //TODO TEST
 {
     int *wholeSet = NULL;
     wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
@@ -121,32 +103,24 @@ int complement (universe_t *universe, set_t *set, setList_t *list, long x)
         return errMsg("Allocation failed\n", false);
 
     printf("S ");
-    for (int i = 0; i < list->setList_len; i++) //FIXME not needed if set is supplied
+    for (int o = 0; o < universe->universe_len; o++)
     {
-        if (list->sets[i].index == x) // FIXME same here
-        {
-
-            for (int o = 0; o < universe->universe_len; o++)
-            {
-                wholeSet[o] = o;
-            }
-            for (int o = 0; o < set->set_len; o++)
-            {
-                wholeSet[set->items[o]] = -1;
-            }
-            for (int o = 0; o < universe->universe_len; o++)
-            {
-                if (wholeSet[o] != -1) printf("%s ", universe->items[o]);
-            }
-            printf("\n");
-            free(wholeSet);
-            return true;
-        }
+        wholeSet[o] = o;
     }
+    for (int o = 0; o < set->set_len; o++)
+    {
+        wholeSet[set->items[o]] = -1;
+    }
+    for (int o = 0; o < universe->universe_len; o++)
+    {
+        if (wholeSet[o] != -1) printf("%s ", universe->items[o]);
+    }
+    printf("\n");
+    free(wholeSet);
     return true;
 }
 
-int Union(universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y) // BEWARE!!
+int Union(universe_t *universe, set_t *set1, set_t *set2)
 {
     int len;
     int *uni = NULL;
@@ -210,7 +184,7 @@ void intersect (universe_t *universe ,set_t *A, set_t *B)
     printf("\n");
 }
 
-int minus (universe_t *universe, set_t *set1, set_t *set2, setList_t *list, long x, long y)
+int minus (universe_t *universe, set_t *set1, set_t *set2)
 {
     int *min = NULL;
     min = bigBrainRealloc(min, set1->set_len * sizeof(int));
@@ -265,12 +239,26 @@ set_t subseteq (set_t *A, set_t *B, bool print)
   }
   return terminus;
 }
-
-//TODO subset function HERE//
-
-void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
+///subset() checks whether A is a proper subset of B
+/// \param A is the suspected proper subset
+/// \param B is the suspected proper superset
+void subset (set_t *A, set_t *B)
 {
-    /*
+    set_t temp;
+    if (A->set_len == 0) printf("true\n");
+    else
+    {
+        temp = subseteq(A, B, false);
+    }
+
+    if (!temp.set_len) printf("false\n");
+    else if (temp.set_len < B->set_len) printf("true\n");
+    else printf("false\n");
+
+}
+
+void equals(set_t *set1, set_t *set2)
+{
     for (int i = 0; i < set1->set_len; i++)
     {
         if (set1->items[i] == set2->items[i])
@@ -280,24 +268,6 @@ void equals(set_t *set1, set_t *set2, setList_t *list, long x, long y)
         }
     }
     printf("false\n");
-     */
-    set_t s1;
-    set_t s2;
-    for (int i = 0; i < list->setList_len; i++)
-    {
-        if (list->sets[i].index == x) s1 = list->sets[i];
-        else if (list->sets[i].index == y) s2 = list->sets[i];
-    }
-    for (int i = 0; i < s1.set_len; i++)
-    {
-        if (s1.items[i] == s2.items[i])
-        {
-            printf("true\n");
-            return;
-        }
-    }
-    printf("false\n");
-
 }
 
 int readStringFromFile(FILE *file, char **string)
@@ -366,7 +336,7 @@ int readUniverse(universe_t *universe, FILE *file)
         // try reading a string from the specified file
         status = readStringFromFile(file, &str);
 
-         // an error occured while reading the file
+         // an error occurred while reading the file
         if (!status)
         {
             free(str);
@@ -462,7 +432,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the set
+    // if the loop finishes, we successfully read the set
     return true;
 }
 
@@ -515,7 +485,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 
     } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the relation
+    // if the loop finishes, we successfully read the relation
     return true;
 }
 
@@ -684,7 +654,7 @@ long readIndex(FILE *file, int count)
 
     char *idx;
     char *ptr;
-    long indexes[2], digit;
+    long indexes[2] = {0}, digit;
     int order = 0;
     while (readStringFromFile(file, &idx) != END_OF_LINE)
     {
