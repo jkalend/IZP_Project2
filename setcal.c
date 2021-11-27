@@ -12,6 +12,10 @@
 #define INVALID_INDEX -2
 #define EMPTY_INDEX -3
 
+#define SET_FUNCTIONS_LASTINDEX 9
+#define REL_FUNCTIONS_LASTINDEX 19
+#define COMBINED_FUNCTIONS_LASTINDEX 22
+
 // STRUCTURES
 
 // struct to store universe contents
@@ -65,7 +69,449 @@ int errMsg(char *msg, int status)
     return status;
 }
 
-int readStringFromFile(FILE *file, char **string, char delimStart, char delimStop)
+// big brain time
+void *bigBrainRealloc(void *ptr, size_t size)
+{
+    void *tmp = realloc(ptr, size);
+    if (tmp == NULL)
+    {
+        free(ptr);
+        return NULL;
+    }
+
+    else
+        return tmp;
+}
+
+//FIXME temporary
+bool empty(set_t *set)
+{
+
+    if (!set->set_len)
+    {
+        printf("\ntrue");
+        return true;
+    }
+    printf("\nfalse");
+
+    return false;
+}
+
+void card(set_t *set)
+{
+    printf("\n%d", set->set_len);
+}
+
+int complement(universe_t *universe, set_t *set) //TODO TEST
+{
+    int *wholeSet = NULL;
+    wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
+    if (wholeSet == NULL)
+        return errMsg("Allocation failed\n", false);
+    printf("\n");
+    printf("S ");
+    for (int o = 0; o < universe->universe_len; o++)
+    {
+        wholeSet[o] = o;
+    }
+    for (int o = 0; o < set->set_len; o++)
+    {
+        wholeSet[set->items[o]] = -1;
+    }
+    for (int o = 0; o < universe->universe_len; o++)
+    {
+        if (wholeSet[o] != -1)
+            printf("%s ", universe->items[o]);
+    }
+
+    free(wholeSet);
+    return true;
+}
+
+int Union(universe_t *universe, set_t *set1, set_t *set2)
+{
+    int len;
+    int *uni = NULL;
+    uni = bigBrainRealloc(uni, set1->set_len * sizeof(int));
+    if (uni == NULL)
+        return errMsg("Allocation failed\n", false);
+
+    len = set1->set_len;
+
+    memcpy(uni, set1->items, set1->set_len * sizeof(int));
+
+    int j;
+    printf("\n");
+    for (int i = 0; i < set2->set_len; i++)
+    {
+        for (j = 0; j < set1->set_len; j++)
+        {
+            if (set1->items[j] == set2->items[i])
+            {
+                j = 0;
+                break;
+            }
+        }
+        if (j != 0)
+        {
+            len++;
+            uni = bigBrainRealloc(uni, len * sizeof(int));
+            if (uni == NULL)
+                return errMsg("Allocation failed\n", false);
+
+            memcpy(&uni[len - 1], &set2->items[i], sizeof(int));
+            // uni[len-1] = set2->items[i];
+        }
+    }
+
+    printf("S ");
+    for (int i = 0; i < len; i++)
+    {
+        printf("%s ", universe->items[uni[i]]);
+    }
+
+    free(uni);
+    return true;
+}
+
+void intersect(universe_t *universe, set_t *A, set_t *B)
+{
+    printf("\n");
+    printf("S ");
+    for (int i = 0; i < A->set_len; i++)
+    {
+        for (int j = 0; j < B->set_len; j++)
+        {
+            if (A->items[i] == B->items[j])
+            {
+                printf("%s ", universe->items[A->items[i]]);
+                break;
+            }
+        }
+    }
+}
+
+int minus(universe_t *universe, set_t *set1, set_t *set2)
+{
+    int *min = NULL;
+    min = bigBrainRealloc(min, set1->set_len * sizeof(int));
+
+    if (min == NULL)
+        return errMsg("Allocation failed\n", false);
+
+    memcpy(min, set1->items, set1->set_len * sizeof(int));
+    printf("\n");
+    printf("S ");
+    for (int i = 0; i < set1->set_len; i++)
+    {
+        for (int j = 0; j < set2->set_len; j++)
+        {
+            if (set1->items[i] == set2->items[j])
+            {
+                min[i] = EMPTY_INDEX;
+                break;
+            }
+        }
+        if (min[i] != EMPTY_INDEX)
+            printf("%s ", universe->items[min[i]]);
+    }
+
+    free(min);
+    return true;
+}
+
+set_t subseteq(set_t *A, set_t *B, bool print)
+{
+    int count = 0;
+    for (int i = 0; i < A->set_len; i++)
+    {
+        for (int j = 0; j < B->set_len; j++)
+        {
+            if (A->items[i] == B->items[j])
+            {
+                count++;
+            }
+        }
+    }
+    set_t terminus = {.set_len = 0}; // pro naznaceni ze A neni podmnozinou
+    if (!print && count == A->set_len)
+        return *A;
+    else if (!print && count != A->set_len)
+        return terminus;
+    if (count == A->set_len)
+    {
+        printf("\ntrue");
+    }
+    else
+    {
+        printf("\nfalse");
+    }
+    return terminus;
+}
+///subset() checks whether A is a proper subset of B
+/// \param A is the suspected proper subset
+/// \param B is the suspected proper superset
+bool subset(set_t *A, set_t *B)
+{
+    set_t temp;
+    if (A->set_len == 0)
+    {
+        printf("\ntrue");
+        return true;
+    }
+
+    else
+    {
+        temp = subseteq(A, B, false);
+    }
+
+    if (!temp.set_len)
+    {
+        printf("\nfalse");
+        return false;
+    }
+
+    else if (temp.set_len < B->set_len)
+    {
+        printf("\ntrue");
+        return true;
+    }
+
+    else
+    {
+        printf("\nfalse");
+        return false;
+    }
+}
+
+bool equals(set_t *set1, set_t *set2)
+{
+    if (!set1->set_len && !set2->set_len)
+    {
+        printf("\ntrue");
+        return true;
+    }
+    else if (set1->set_len != set2->set_len)
+    {
+        printf("\nfalse");
+        return false;
+    }
+
+    for (int i = 0; i < set1->set_len; i++)
+    {
+        bool status = false;
+        for (int j = 0; j < set1->set_len; j++)
+        {
+            if (set1->items[i] == set2->items[j])
+            {
+                status = true;
+                break;
+            }
+        }
+        if (!status)
+        {
+            printf("\nfalse");
+            return false;
+        }
+    }
+    printf("\ntrue");
+    return true;
+}
+
+bool reflexive(universe_t *uni, relation_t *rel)
+{
+    int reflexiveUnitsCount = 0;
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        if (rel->items[i].x == rel->items[i].y)
+        {
+            reflexiveUnitsCount++;
+        }
+    }
+    if (reflexiveUnitsCount == uni->universe_len)
+    {
+        printf("\ntrue");
+        return true;
+    }
+    printf("\nfalse");
+    return false;
+}
+
+bool symmetric(relation_t *rel)
+{
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        bool hasSymmetricUnit = false;
+        for (int j = 0; j < rel->relation_len; j++)
+        {
+            if (rel->items[i].x == rel->items[j].y && rel->items[j].x == rel->items[i].y)
+            {
+                hasSymmetricUnit = true;
+            }
+        }
+        if (!hasSymmetricUnit)
+        {
+            printf("\nfalse");
+            return false;
+        }
+    }
+    printf("\ntrue");
+    return true;
+}
+
+bool antisymmetric(relation_t *rel)
+{
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        for (int j = 0; j < rel->relation_len; j++)
+        {
+            if (rel->items[i].x == rel->items[j].y && rel->items[j].x == rel->items[i].y && rel->items[i].x != rel->items[i].y)
+            {
+                printf("\nfalse");
+                return false;
+            }
+        }
+    }
+    printf("\ntrue");
+    return true;
+}
+
+bool transitive(relation_t *rel)
+{
+
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        for (int j = 0; j < rel->relation_len; j++)
+        {
+            if (rel->items[i].y == rel->items[j].x)
+            {
+                bool status = false;
+                for (int k = 0; k < rel->relation_len; k++)
+                {
+                    if (rel->items[k].x == rel->items[i].x && rel->items[k].y == rel->items[j].y)
+                    {
+                        status = true;
+                        break;
+                    }
+                }
+                if (!status)
+                {
+                    printf("\nfalse");
+                    return false;
+                }
+            }
+        }
+    }
+
+    /* for (int i = 0; i < rel->relation_len; i++)
+    {
+        for (int j = 0; j < rel->relation_len; j++)
+        {
+            if (rel->items[i].y == rel->items[j].x)
+            {
+                bool hasTransitiveUnit = false;
+                for (int k = 0; k < rel->relation_len; k++)
+                {
+                    if (rel->items[i].x == rel->items[k].x == 0 && rel->items[j].y == rel->items[k].y)
+                    {
+                        hasTransitiveUnit = true;
+                        break;
+                    }
+                }
+                if (!hasTransitiveUnit)
+                {
+                    printf("\nfalse");
+                    return false;
+                }
+            }
+        }
+    } */
+    printf("\ntrue");
+    return true;
+}
+
+bool function(universe_t *uni, relation_t *rel)
+{
+    int units = 0;
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        for (int j = 0; j < rel->relation_len; j++)
+        {
+            if ((rel->items[i].x == rel->items[j].x) && (rel->items[i].y != rel->items[j].y))
+            {
+                printf("\nfalse");
+                return false;
+            }
+        }
+    }
+
+    printf("\ntrue");
+    return true;
+}
+
+bool domain(universe_t *uni, relation_t *rel)
+{
+    int *domain = malloc(rel->relation_len * sizeof(int));
+    int domainCount = 0;
+    if (domain == NULL)
+        return false;
+    printf("\n");
+    printf("S ");
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        bool status = false;
+        for (int j = 0; j < domainCount; j++)
+        {
+            if (rel->items[i].x == domain[j])
+            {
+                status = true;
+                break;
+            }
+        }
+        if (!status)
+        {
+            printf("%s ", uni->items[rel->items[i].x]);
+            domain[domainCount] = rel->items[i].x;
+            domainCount++;
+        }
+    }
+
+    free(domain);
+    return true;
+}
+
+bool codomain(universe_t *uni, relation_t *rel)
+{
+    int *domain = malloc(rel->relation_len * sizeof(int));
+    int domainCount = 0;
+    if (domain == NULL)
+        return false;
+    printf("\n");
+    printf("S ");
+    for (int i = 0; i < rel->relation_len; i++)
+    {
+        bool status = false;
+        for (int j = 0; j < domainCount; j++)
+        {
+            if (rel->items[i].y == domain[j])
+            {
+                status = true;
+                break;
+            }
+        }
+        if (!status)
+        {
+            printf("%s ", uni->items[rel->items[i].y]);
+            domain[domainCount] = rel->items[i].y;
+            domainCount++;
+        }
+    }
+
+    free(domain);
+    return true;
+}
+
+int readStringFromFile(FILE *file, char **string)
 {
     char c;
     int strLen = 0;
@@ -73,7 +519,7 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
     // allocate memory for the string
     *string = malloc((MAX_STR_LEN + 1) * sizeof(char));
     if (*string == NULL)
-        return errMsg("Allocation failed\n", false);
+        return errMsg("Allocation failed.\n", false);
 
     *string[0] = '\0';
 
@@ -83,14 +529,14 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
         // check if the maximum length wasn't reached
         if (strLen > MAX_STR_LEN)
         {
-            return errMsg("Items cannot be more than 30 characters long\n", false);
+            return errMsg("Items cannot be more than 30 characters long.\n", false);
         }
 
         // reached the delimiting character or newline/EOF -> current string is complete
-        else if ((c == delimStop && strLen != 0) || c == '\n')
+        else if ((c == DELIM && strLen != 0) || c == '\n')
         {
             // resize the string to it's true value
-            *string = realloc(*string, (strLen + 1) * sizeof(char));
+            *string = bigBrainRealloc(*string, (strLen + 1) * sizeof(char));
 
             if (*string == NULL)
                 return errMsg("Reallocation failed\n", false);
@@ -102,7 +548,7 @@ int readStringFromFile(FILE *file, char **string, char delimStart, char delimSto
         }
 
         // the start condition is met and all whitespace is gone -> start adding characters to the string
-        else if (c != delimStart && c != DELIM)
+        else if (c != DELIM)
         {
             (*string)[strLen] = c;
             (*string)[++strLen] = '\0';
@@ -126,27 +572,31 @@ int checkUniverse(char *str, universe_t *universe)
 int readUniverse(universe_t *universe, FILE *file)
 {
     universe->universe_len = 0;
+    universe->items = NULL;
     int status;
     char *str;
     do
     {
         // try reading a string from the specified file
-        status = readStringFromFile(file, &str, DELIM, DELIM);
+        status = readStringFromFile(file, &str);
 
         // an error occured while reading the file
         if (!status)
+        {
+            free(str);
             return false;
+        }
+
+        // empty universe
+        if (status == END_OF_LINE && strlen(str) == 0)
+        {
+            free(str);
+            return true;
+        }
 
         else
         {
-            if (universe->universe_len == 0)
-            {
-                universe->items = malloc(++universe->universe_len * sizeof(char *));
-            }
-            else
-            {
-                universe->items = realloc(universe->items, ++universe->universe_len * sizeof(char *));
-            }
+            universe->items = bigBrainRealloc(universe->items, ++universe->universe_len * sizeof(char *));
 
             // check for memory errors
             if (universe->items == NULL)
@@ -184,129 +634,173 @@ int findUniverseIndex(char *str, universe_t *universe)
     return INVALID_INDEX;
 }
 
-int readIndexedItem(int *idx, FILE *file, universe_t *universe, char delimStart, char delimStop)
-{
-    char *str;
-    int status = readStringFromFile(file, &str, delimStart, delimStop);
-
-    if (!status)
-    {
-        free(str);
-        return INVALID_INDEX; // an error occurred while reading the string
-    }
-
-    else
-    {
-        // when using this function with relations, the newline character gets saved separately
-        if (strlen(str) == 0)
-        {
-            free(str);
-            return END_OF_LINE;
-        }
-
-        int i = findUniverseIndex(str, universe);
-        free(str);
-
-        if (i != INVALID_INDEX)
-        {
-            *idx = i;
-            return status;
-        }
-        else
-            return errMsg("The set/relation contains items that do not belong in the universe\n", INVALID_INDEX);
-    }
-}
-
-int readSet(set_t *set, FILE *file, universe_t *universe, int index)
+int readSet(set_t *set, FILE *file, universe_t *universe)
 {
     set->set_len = 0;
+    set->items = NULL;
+
     int idx, status;
+    char *str;
 
     do
     {
-        status = readIndexedItem(&idx, file, universe, DELIM, DELIM);
+        status = readStringFromFile(file, &str);
 
-        if (status == INVALID_INDEX)
+        // empty set
+        if (strlen(str) == 0 && status == END_OF_LINE)
+            return true;
+
+        idx = findUniverseIndex(str, universe);
+        free(str);
+
+        if (!status)
             return false;
-
         else
         {
-            if (set->set_len == 0)
+            if (idx == INVALID_INDEX)
             {
-                set->items = malloc(++set->set_len * sizeof(int));
+                return errMsg("The set contains items that are not part of the universe.\n", false);
             }
             else
             {
-                set->items = realloc(set->items, ++set->set_len * sizeof(int));
+                set->items = bigBrainRealloc(set->items, ++set->set_len * sizeof(int));
+                if (set->items == NULL)
+                    return errMsg("Allocation failed.\n", false);
+
+                for (int i = 0; i < set->set_len - 1; i++)
+                {
+                    if (set->items[i] == idx)
+                        return errMsg("Duplicity in a set\n", false);
+                }
+
+                set->items[set->set_len - 1] = idx;
             }
-
-            if (set->items == NULL)
-                return errMsg("Allocation failed\n", false);
-
-            for (int i = 0; i < set->set_len - 1; i++)
-            {
-                if (set->items[i] == idx)
-                    return errMsg("Duplicity in a set\n", false);
-            }
-
-            set->items[set->set_len - 1] = idx;
-            set->index = index;
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we successfully read the set
+    // if the loop finishes, we sucessfully read the set
     return true;
 }
 
-int readRelation(relation_t *relation, FILE *file, universe_t *universe, int index)
+int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 {
     relation->relation_len = 0;
+    relation->items = NULL;
 
     int statusX, statusY, idx, idy;
+    char *str;
     do
     {
-        statusX = readIndexedItem(&idx, file, universe, '(', DELIM);
-        if (statusX == INVALID_INDEX)
-            return false;
-        else if (statusX == END_OF_LINE)
-            break;
+        statusX = readStringFromFile(file, &str);
 
-        statusY = readIndexedItem(&idy, file, universe, DELIM, ')');
-        if (statusY == INVALID_INDEX)
+        if (!statusX)
             return false;
-        else if (statusY == END_OF_LINE)
-            break;
+        else if (statusX == END_OF_LINE && strlen(str) == 0)
+            return true;
+        else if (str[0] != '(')
+            return errMsg("Invalid relation.\n", false);
 
-        else
+        // compare without opening brace
+        idx = findUniverseIndex(&str[1], universe);
+        free(str);
+
+        statusY = readStringFromFile(file, &str);
+
+        if (!statusY)
+            return false;
+        else if (str[strlen(str) - 1] != ')')
+            return errMsg("Invalid relation.\n", false);
+
+        // get rid of closing brace before the comparison
+        str[strlen(str) - 1] = '\0';
+        idy = findUniverseIndex(str, universe);
+        free(str);
+
+        if (idx == INVALID_INDEX || idy == INVALID_INDEX)
+            return errMsg("The relation contains items that are not part of the universe.\n", false);
+
+        relation->items = bigBrainRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+        if (relation->items == NULL)
         {
-            if (relation->relation_len == 0)
-            {
-                relation->items = malloc(++relation->relation_len * sizeof(relationUnit_t));
-            }
-            else
-            {
-                relation->items = realloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
-            }
-
-            if (relation->items == NULL)
-            {
-                return errMsg("Allocation failed\n", false);
-            }
-
-            /* for (int i = 0; i < relation->relation_len - 1; i++)
-            {
-                if (relation->items[i].x == idx || relation->items[i].y == idy)
-                    return errMsg("Duplicity in a relation\n", false);
-            } */
-
-            relation->items[relation->relation_len - 1].x = idx;
-            relation->items[relation->relation_len - 1].y = idy;
-            relation->index = index;
+            return errMsg("Allocation failed.\n", false);
         }
+
+        for (int i = 0; i < relation->relation_len - 1; i++)
+        {
+            if (relation->items[i].x == idx && relation->items[i].y == idy)
+                return errMsg("Duplicity in a relation\n", false);
+        }
+        relation->items[relation->relation_len - 1].x = idx;
+        relation->items[relation->relation_len - 1].y = idy;
+
     } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
 
-    // if the loop finishes, we successfully read the relation
+    // if the loop finishes, we sucessfully read the relation
     return true;
+}
+
+int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
+{
+    if (readUniverse(universe, file))
+    {
+        sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+        if (sets->sets == NULL)
+            return false;
+
+        sets->sets[sets->setList_len - 1].items = malloc(universe->universe_len * sizeof(int));
+        if (sets->sets[sets->setList_len - 1].items == NULL)
+            return false;
+
+        for (int i = 0; i < universe->universe_len; i++)
+        {
+            sets->sets[sets->setList_len - 1].items[i] = i;
+        }
+        sets->sets[sets->setList_len - 1].set_len = universe->universe_len;
+
+        return true;
+    }
+    else
+        return false;
+}
+
+int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
+{
+    relations->relations = bigBrainRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
+
+    // check for memory errors
+    if (relations->relations == NULL)
+    {
+        return errMsg("Allocation failed\n", false);
+    }
+
+    if (readRelation(&relations->relations[relations->relationList_len - 1], file, universe))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+int appendSet(setList_t *sets, universe_t *universe, FILE *file)
+{
+    sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+
+    // check for memory error
+    if (sets->sets == NULL)
+    {
+        return errMsg("Allocation failed\n", false);
+    }
+
+    if (readSet(&sets->sets[sets->setList_len - 1], file, universe))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 // free the universe struct
@@ -351,315 +845,434 @@ void freeRelations(relationList_t *relations)
     free(relations->relations);
 }
 
-// TODO ? delete later - only for validity checking
+// print universe contents
 void printUniverse(universe_t *universe)
 {
-    printf("U ");
+    printf("U");
     for (int i = 0; i < universe->universe_len; i++)
     {
-        printf("%s ", universe->items[i]);
+        printf(" %s", universe->items[i]);
     }
-    printf("\n");
 }
 
-// TODO ? delete later - only for validity checking
+// print set contents
 void printSet(set_t *set, universe_t *universe)
 {
-    printf("S ");
+    printf("\n");
+    printf("S");
     for (int i = 0; i < set->set_len; i++)
     {
-        printf("%s ", universe->items[set->items[i]]);
+        printf(" %s", universe->items[set->items[i]]);
     }
-    printf("\n");
 }
 
-// TODO ? delete later - only for validity checking
+// print relation contents
 void printRelation(relation_t *relation, universe_t *universe)
 {
-    printf("R ");
+    printf("\n");
+    printf("R");
     for (int i = 0; i < relation->relation_len; i++)
     {
-        printf("(%s %s) ", universe->items[relation->items[i].x], universe->items[relation->items[i].y]);
+        printf(" (%s %s)", universe->items[relation->items[i].x], universe->items[relation->items[i].y]);
     }
-    printf("\n");
 }
 
 // returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
 // or contains other symbols than digits
 // on success returns the index as a long int
-long readIndex(FILE *file, int count)
+long *readIndex(FILE *file, int count, int *numberOfIndices)
 {
-    char c;
+    char *idx;
     char *ptr;
-    long indexes[3], digit;
+    long *indexes = NULL, digit;
     int order = 0;
-    while (fscanf(file, "%c", &c) != EOF)
+    int status;
+    do
     {
-        if (isdigit(c))
+        if (!(status = readStringFromFile(file, &idx)))
+            return NULL;
+
+        indexes = bigBrainRealloc(indexes, sizeof(long));
+        if (indexes == NULL)
+            return NULL;
+
+        digit = strtol(idx, &ptr, 10);
+        if (digit < 1 || *ptr != '\0')
         {
-            digit = strtol(&c, &ptr, 10);
-            if (digit < 1 || *ptr != '\0')
-                return errMsg("Command taking wrong index", false);
-            else if (digit > count)
-                return EMPTY_INDEX; // TODO bonus
-            else
-                indexes[order] = digit;
+            errMsg("Command taking wrong index", false);
+            return NULL;
         }
-        else if (c == '\n')
-            indexes[order] = '\n';
+        else if (digit > count)
+        {
+            indexes[0] = 0;
+            return indexes;
+        }
+        else
+            indexes[order] = digit;
 
         order++;
+    } while (status != END_OF_LINE);
+    *numberOfIndices = order;
+    return indexes;
+}
+
+int callSetFunction(universe_t *universe, setList_t *sets, char *command, long *indices, int numberOfIndices, int funcNumber)
+{
+
+    int status = -1;
+    int indicesUsed = 1;
+    set_t *set1 = NULL;
+    set_t *set2 = NULL;
+    if (numberOfIndices > 0 && indices[0] < sets->setList_len)
+    {
+        set1 = &sets->sets[indices[0]];
     }
-    return *indexes;
+    else
+    {
+        return -1;
+    }
+
+    switch (funcNumber)
+    {
+    case 0:
+        status = empty(set1);
+        break;
+    case 1:
+        card(set1);
+        break;
+    case 2:
+        complement(universe, set1);
+        break;
+
+    default:
+        if (numberOfIndices > 1 && indices[1] < sets->setList_len)
+        {
+            set2 = &sets->sets[indices[1]];
+        }
+        else
+        {
+            return -1;
+        }
+        indicesUsed = 2;
+        switch (funcNumber)
+        {
+        case 3:
+            Union(universe, set1, set2);
+            break;
+        case 4:
+            intersect(universe, set1, set2);
+            break;
+        case 5:
+            minus(universe, set1, set2);
+            break;
+        case 6:
+            /* status =  */ subseteq(set1, set2, true); // TODO upravit subsetq tak aby vracel bool
+            break;
+        case 7:
+            status = subset(set1, set2);
+            break;
+        case 8:
+            status = equals(set1, set2);
+            break;
+        default:
+            return -1;
+        }
+    }
+
+    if (!(numberOfIndices - indicesUsed))
+        return 0;
+    else if (status == -1)
+    {
+        return -1;
+    }
+    else if (status == 1 && numberOfIndices - indicesUsed == 1)
+    {
+        return 0;
+    }
+    else if (numberOfIndices - indicesUsed == 1)
+    {
+        return 1;
+    }
+    return -1;
+}
+
+int callRelFunction(universe_t *universe, relationList_t *relations, char *command, long *indices, int numberOfIndices, int funcNumber)
+{
+    int status = -1;
+    int indicesUsed = 1;
+    relation_t *rel = NULL;
+    if (numberOfIndices > 2 || !numberOfIndices)
+    {
+        return -1;
+    }
+    else
+    {
+        rel = &relations->relations[indices[0]];
+    }
+
+    switch (funcNumber)
+    {
+    case 9:
+        status = reflexive(universe, rel);
+        break;
+    case 10:
+        status = symmetric(rel);
+        break;
+    case 11:
+        status = antisymmetric(rel);
+        break;
+    case 12:
+        status = transitive(rel);
+        break;
+    case 13:
+        status = function(universe, rel);
+        break;
+    case 14:
+        if (!domain(universe, rel))
+        {
+            return -1;
+        }
+        break;
+    case 15:
+        if (!codomain(universe, rel))
+        {
+            return -1;
+        }
+        break;
+        /* case 16:
+        closure_ref(...);
+        break;
+    case 17:
+        closure_sym(...);
+        break;
+    case 18:
+        closure_trans(...);
+        break; */
+
+    default:
+        break;
+    }
+    if (!(numberOfIndices - indicesUsed))
+        return 0;
+    else if (status == -1)
+    {
+        return -1;
+    }
+    else if (status == 1 && numberOfIndices - indicesUsed == 1)
+    {
+        return 0;
+    }
+    else if (numberOfIndices - indicesUsed == 1)
+    {
+        return 1;
+    }
+    return -1;
+}
+
+int pickAndCallFunction(universe_t *universe, setList_t *sets, relationList_t *relations, char *command, long *indices, int *indexType, int numberOfIndices, int funcNumber)
+{
+    int status = 0;
+    if (funcNumber < SET_FUNCTIONS_LASTINDEX)
+    {
+        for (int i = 0; i < numberOfIndices; i++)
+        {
+            if (indexType[i] < 0)
+            {
+                return -1;
+            }
+        }
+
+        status = callSetFunction(universe, sets, command, indices, numberOfIndices, funcNumber);
+    }
+    else if (funcNumber < REL_FUNCTIONS_LASTINDEX)
+    {
+        if (indexType[0] > 0)
+        {
+
+            return -1;
+        }
+
+        status = callRelFunction(universe, relations, command, indices, numberOfIndices, funcNumber);
+    }
+    /* else if (status = COMBINED_FUNCTIONS_LASTINDEX)
+    {
+        status = callCombinedFunction(...);
+    } */
+    return status;
+}
+
+char functions[22][14] = {"empty",
+                          "card",
+                          "complement",
+                          "union",
+                          "intersect",
+                          "minus",
+                          "subsetq",
+                          "subset",
+                          "equals",
+                          "reflexive",
+                          "symmetric",
+                          "antisymmetric",
+                          "transitive",
+                          "function",
+                          "domain",
+                          "codomain",
+                          "closure_ref",
+                          "closure_sym",
+                          "closure_trans",
+                          "injective",
+                          "surjective",
+                          "bijective"};
+
+int matchStringToFunc(char *command, char functions[22][14])
+{
+    for (int i = 0; i < 19; i++)
+    {
+        if (strcmp(command, functions[i]) == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int findByLineIndex(int index, setList_t *sets, relationList_t *relations, int *isSet)
+{
+    for (int i = 0; i < sets->setList_len; i++)
+    {
+        if (index == sets->sets[i].index)
+        {
+            *isSet = 1;
+            return i;
+        }
+    }
+
+    for (int i = 0; i < relations->relationList_len; i++)
+    {
+        if (index == relations->relations[i].index)
+        {
+            *isSet = -1;
+            return i;
+        }
+    }
+
+    *isSet = 0;
+    return 0;
 }
 
 // FIXME if this DOESNT work let me know as soon as possible
-/* int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count)
+int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count, bool shouldExecuteCommand)
 {
-char *command = malloc(sizeof(char));
-char c;
-
-if (command == NULL)
-    return errMsg("Allocation failed\n", false);
-
-command[0] = '\0';
-
-int length = 0;
-while (fscanf(file, "%c", &c))
-{
-    if (length != 0 && command[length] != DELIM)
+    if (shouldExecuteCommand)
     {
-        command = realloc(command, (length + 1) * sizeof(char));
-        if (command == NULL)
-            return errMsg("Reallocation failed\n", false);
+        char *command;
+        int status;
+        status = readStringFromFile(file, &command);
 
-        command[length - 1] = c;
-        command[length] = '\0';
+        if (status == INVALID_INDEX)
+            return false;
+        int numberOfIndices = 0;
+        long *lineIndices = readIndex(file, count, &numberOfIndices);
+        if (!numberOfIndices)
+            return false;
+        long indices[3];
+        int indexType[3];
+        for (int i = 0; i < numberOfIndices; i++)
+        {
+
+            indices[i] = findByLineIndex(lineIndices[i], sets, relations, &indexType[i]);
+            if (!indexType[i])
+            {
+                free(command);
+                free(lineIndices);
+                return false;
+            }
+        }
+        int funcNumber = matchStringToFunc(command, functions);
+        if (funcNumber == -1)
+        {
+            free(command);
+            free(lineIndices);
+            return false;
+        }
+
+        if (shouldExecuteCommand)
+        {
+            status = pickAndCallFunction(universe, sets, relations, command, indices, indexType, numberOfIndices, funcNumber);
+            if (status == -1)
+            {
+                return false;
+            }
+            /* else if(status == 1)
+        {
+            int line = numberOfIndices - status;
+            jumpToLine(line);
+        } */
+        }
+
+        free(command);
+        free(lineIndices);
     }
-    else if (length != 0 && command[length] == DELIM)
+    /* else
     {
-        break;
-    }
-    length++;
+        saveLine();
+    } */
+
+    return true;
 }
 
-    *
-    * selection of the wanted command
-    * use char *command to decide which command is required
-    * within these functions use the readIndex() to get indexes of the required lines
-    * enter their data through setList->sets[index].items[i]
-    * or relationsList->relations[index].items[i]
-    *
-    */
-/* free(command);
-return true;
-} */
-
-//TODO looping throught relation could be made in a separate function
-
-int getUniqueRelMembers(relation_t rel, int members[], int param)
+bool containsRelationUnit(relation_t *relation, relationUnit_t *unit)
 {
-    bool shouldFree = false;
-    if (members == NULL)
+    for (int i = 0; i < relation->relation_len; i++)
     {
-        shouldFree = true;
-        members = malloc(rel.relation_len * 2 * sizeof(int));
-    }
-
-    int memberCount = 0;
-    if (param == 1 || param == 0)
-    {
-        for (int i = 0; i < rel.relation_len; i++)
+        if (relation->items[i].x == unit->x && relation->items[i].y == unit->y)
         {
-            bool isDuplicit = false;
-            for (int j = 0; j < memberCount; j++)
-            {
-                if (rel.items[i].x == members[j])
-                {
-                    isDuplicit = true;
-                    break;
-                }
-            }
-
-            if (!isDuplicit)
-            {
-                members[memberCount] = rel.items[i].x;
-                memberCount++;
-            }
+            return true;
         }
-    }
-    if (param == 2 || param == 0)
-    {
-        for (int i = 0; i < rel.relation_len; i++)
-        {
-
-            bool isDuplicit = false;
-            for (int j = 0; j < memberCount; j++)
-            {
-                if (rel.items[i].y == members[j])
-                {
-                    isDuplicit = true;
-                    break;
-                }
-            }
-            if (!isDuplicit)
-            {
-                members[memberCount] = rel.items[i].y;
-                memberCount++;
-            }
-        }
-    }
-
-    if (shouldFree)
-    {
-        free(members);
-    }
-
-    return memberCount;
-}
-
-bool r_isReflexive(universe_t uni, relation_t rel)
-{
-    int reflexiveUnitsCount = 0;
-    for (int i = 0; i < rel.relation_len; i++)
-    {
-        if (strcmp(uni.items[rel.items[i].x], uni.items[rel.items[i].y]) == 0)
-        {
-            reflexiveUnitsCount++;
-        }
-    }
-    if (reflexiveUnitsCount == getUniqueRelMembers(rel, NULL, 0))
-    {
-        return true;
     }
     return false;
 }
 
-bool r_isSymmetric(universe_t uni, relation_t rel)
+int transitiveClosure(relation_t *relation, universe_t *universe)
 {
-    for (int i = 0; i < rel.relation_len; i++)
-    {
-        bool hasSymmetricUnit = false;
-        for (int j = 0; j < rel.relation_len; j++)
-        {
-            if (strcmp(uni.items[rel.items[i].x], uni.items[rel.items[j].y]) == 0 && strcmp(uni.items[rel.items[j].x], uni.items[rel.items[i].y]) == 0)
-            {
-                hasSymmetricUnit = true;
-            }
-        }
-        if (!hasSymmetricUnit)
-        {
-            return false;
-        }
-    }
-    return true;
-}
+    relation_t tmp = {.items = NULL, .relation_len = relation->relation_len};
+    tmp.items = malloc(sizeof(relationUnit_t) * relation->relation_len);
+    if (tmp.items == NULL)
+        return errMsg("Allocation failed.\n", false);
 
-bool r_isAntiSymmetric(universe_t uni, relation_t rel)
-{
-    for (int i = 0; i < rel.relation_len; i++)
+    memcpy(tmp.items, relation->items, sizeof(relationUnit_t) * relation->relation_len);
+    for (int i = 0; i < tmp.relation_len; i++)
     {
-
-        for (int j = 0; j < rel.relation_len; j++)
+        for (int j = 0; j < tmp.relation_len; j++)
         {
-            if (strcmp(uni.items[rel.items[i].x], uni.items[rel.items[j].y]) == 0 && strcmp(uni.items[rel.items[j].x], uni.items[rel.items[i].y]) == 0)
+            if (tmp.items[i].y == tmp.items[j].x)
             {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-bool r_isTransitive(universe_t uni, relation_t rel)
-{
-    for (int i = 0; i < rel.relation_len; i++)
-    {
-        for (int j = 0; j < rel.relation_len; j++)
-        {
-            if (strcmp(uni.items[rel.items[i].y], uni.items[rel.items[j].x]) == 0)
-            {
-                bool hasTransitiveUnit = false;
-                for (int k = 0; k < rel.relation_len; k++)
+                relationUnit_t unit = {.x = tmp.items[i].x, .y = tmp.items[j].y};
+                if (!containsRelationUnit(&tmp, &unit))
                 {
-                    if (strcmp(uni.items[rel.items[i].x], uni.items[rel.items[k].x]) == 0 && strcmp(uni.items[rel.items[j].y], uni.items[rel.items[k].y]) == 0)
+                    tmp.items = bigBrainRealloc(tmp.items, ++tmp.relation_len * sizeof(relationUnit_t));
+                    if (tmp.items == NULL)
                     {
-                        hasTransitiveUnit = true;
-                        break;
+                        return errMsg("Allocation failed.\n", false);
                     }
-                }
-                if (!hasTransitiveUnit)
-                {
-                    return false;
+                    tmp.items[tmp.relation_len - 1].x = unit.x;
+                    tmp.items[tmp.relation_len - 1].y = unit.y;
                 }
             }
         }
     }
+    printRelation(&tmp, universe);
+    free(tmp.items);
     return true;
 }
 
-bool r_isFunction(universe_t uni, relation_t rel)
+// free all dynamic memory
+void destructor(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file)
 {
-    for (int i = 0; i < rel.relation_len; i++)
-    {
-        for (int j = i; j < rel.relation_len; j++)
-        {
-            if (strcmp(uni.items[rel.items[i].x], uni.items[rel.items[j].x]) == 0)
-            {
-                if (strcmp(uni.items[rel.items[i].y], uni.items[rel.items[j].y]) != 0)
-                {
-                    return false;
-                }
-            }
-        }
-    }
-    return true;
-}
-
-void r_domain(universe_t uni, relation_t rel)
-{
-    int *members = malloc(rel.relation_len * 2 * sizeof(int));
-    if (members == NULL)
-        errMsg("Allocation failed", false);
-
-    int len = getUniqueRelMembers(rel, members, 1);
-    for (int i = 0; i < len; i++)
-    {
-        printf("%s ", uni.items[members[i]]);
-    }
-    free(members);
-}
-
-void r_codomain(universe_t uni, relation_t rel)
-{
-    int *members = malloc(rel.relation_len * 2 * sizeof(int));
-    if (members == NULL)
-        errMsg("Allocation failed", false);
-
-    int len = getUniqueRelMembers(rel, members, 2);
-    for (int i = 0; i < len; i++)
-    {
-        printf("%s ", uni.items[members[i]]);
-    }
-    free(members);
-}
-
-bool r_isInjective(universe_t uni, relation_t rel)
-{
-    for (int i = 0; i < rel.relation_len; i++)
-    {
-        for (int j = i; j < rel.relation_len; j++)
-        {
-            if (strcmp(uni.items[rel.items[i].y], uni.items[rel.items[j].y]) == 0)
-            {
-                if (strcmp(uni.items[rel.items[i].x], uni.items[rel.items[j].x]) != 0)
-                {
-                    return false;
-                }
-            }
-        }
-    }
-    return true;
+    freeUniverse(universe);
+    freeRelations(relations);
+    freeSets(sets);
+    fclose(file);
 }
 
 int readFile(FILE *file)
@@ -667,11 +1280,8 @@ int readFile(FILE *file)
     char c;
     int count = 0;
     universe_t universe;
-    relationList_t relations;
-    setList_t sets;
-
-    relations.relationList_len = 0;
-    sets.setList_len = 0;
+    relationList_t relations = {.relationList_len = 0, .relations = NULL};
+    setList_t sets = {.setList_len = 0, .sets = NULL};
 
     while (fscanf(file, "%c", &c) != EOF)
     {
@@ -680,39 +1290,29 @@ int readFile(FILE *file)
         {
         case 'U':
         {
-            if (readUniverse(&universe, file))
+            if (appendUniverse(&universe, &sets, file))
             {
+                sets.sets[sets.setList_len - 1].index = count;
                 printUniverse(&universe);
             }
             else
             {
+                destructor(&universe, &relations, &sets, file);
                 return EXIT_FAILURE;
             }
+
             break;
         }
         case 'S':
         {
-            if (sets.setList_len == 0)
+            if (appendSet(&sets, &universe, file))
             {
-                sets.sets = malloc(++sets.setList_len * sizeof(set_t));
-            }
-            else
-            {
-                sets.sets = realloc(sets.sets, ++sets.setList_len * sizeof(set_t));
-            }
-
-            // check for memory error
-            if (sets.sets == NULL)
-            {
-                return errMsg("Allocation failed\n", EXIT_FAILURE);
-            }
-
-            if (readSet(&sets.sets[sets.setList_len - 1], file, &universe, count))
-            {
+                sets.sets[sets.setList_len - 1].index = count;
                 printSet(&sets.sets[sets.setList_len - 1], &universe);
             }
             else
             {
+                destructor(&universe, &relations, &sets, file);
                 return EXIT_FAILURE;
             }
 
@@ -720,54 +1320,40 @@ int readFile(FILE *file)
         }
         case 'R':
         {
-            if (relations.relationList_len == 0)
+            if (appendRelation(&relations, &universe, file))
             {
-                relations.relations = malloc(++relations.relationList_len * sizeof(relation_t));
-            }
-            else
-            {
-                relations.relations = realloc(relations.relations, ++relations.relationList_len * sizeof(relation_t));
-            }
-
-            // check for memory errors
-            if (relations.relations == NULL)
-            {
-                return errMsg("Allocation failed\n", EXIT_FAILURE);
-            }
-
-            if (readRelation(&relations.relations[relations.relationList_len - 1], file, &universe, count))
-            {
+                relations.relations[relations.relationList_len - 1].index = count;
                 printRelation(&relations.relations[relations.relationList_len - 1], &universe);
             }
             else
             {
+                destructor(&universe, &relations, &sets, file);
                 return EXIT_FAILURE;
             }
+
             break;
         }
         case 'C':
         {
 
-            printf("%d", r_isReflexive(universe, relations.relations[0]));
-            printf("%d", r_isSymmetric(universe, relations.relations[0]));
-            printf("%d", r_isAntiSymmetric(universe, relations.relations[0]));
-            printf("%d", r_isTransitive(universe, relations.relations[0]));
-            printf("%d", r_isFunction(universe, relations.relations[0]));
-            r_domain(universe, relations.relations[0]);
-            r_codomain(universe, relations.relations[0]);
-            printf("%d", r_isInjective(universe, relations.relations[0]));
+            //I suppose prints will happen in each function
+
+            if (!readCommands(&universe, &relations, &sets, file, count, true))
+            {
+                destructor(&universe, &relations, &sets, file);
+                return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+            }
+            break;
         }
 
         default:
         {
-            freeUniverse(&universe);
-            freeRelations(&relations);
-            freeSets(&sets);
-            fclose(file);
-            return 0;
+            destructor(&universe, &relations, &sets, file);
+            return errMsg("Invalid file structure.\n", EXIT_FAILURE);
         }
         }
     }
+    destructor(&universe, &relations, &sets, file);
     return 0;
 }
 
