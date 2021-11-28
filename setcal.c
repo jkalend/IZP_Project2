@@ -16,6 +16,29 @@
 #define REL_FUNCTIONS_LASTINDEX 19
 #define COMBINED_FUNCTIONS_LASTINDEX 22
 
+char functions[][14] = {"empty",
+                          "card",
+                          "complement",
+                          "union",
+                          "intersect",
+                          "minus",
+                          "subsetq",
+                          "subset",
+                          "equals",
+                          "reflexive",
+                          "symmetric",
+                          "antisymmetric",
+                          "transitive",
+                          "function",
+                          "domain",
+                          "codomain",
+                          "closure_ref",
+                          "closure_sym",
+                          "closure_trans",
+                          "injective",
+                          "surjective",
+                          "bijective"};
+
 // STRUCTURES
 
 // struct to store universe contents
@@ -89,17 +112,17 @@ bool empty(set_t *set)
 
     if (!set->set_len)
     {
-        printf("\ntrue");
+        printf("true\n");
         return true;
     }
-    printf("\nfalse");
+    printf("false\n");
 
     return false;
 }
 
 void card(set_t *set)
 {
-    printf("\n%d", set->set_len);
+    printf("%d\n", set->set_len);
 }
 
 int complement(universe_t *universe, set_t *set) //TODO TEST
@@ -108,8 +131,8 @@ int complement(universe_t *universe, set_t *set) //TODO TEST
     wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
     if (wholeSet == NULL)
         return errMsg("Allocation failed\n", false);
-    printf("\n");
-    printf("S ");
+    
+    printf("S");
     for (int o = 0; o < universe->universe_len; o++)
     {
         wholeSet[o] = o;
@@ -121,9 +144,9 @@ int complement(universe_t *universe, set_t *set) //TODO TEST
     for (int o = 0; o < universe->universe_len; o++)
     {
         if (wholeSet[o] != -1)
-            printf("%s ", universe->items[o]);
+            printf(" %s", universe->items[o]);
     }
-
+    printf("\n");
     free(wholeSet);
     return true;
 }
@@ -141,7 +164,7 @@ int Union(universe_t *universe, set_t *set1, set_t *set2)
     memcpy(uni, set1->items, set1->set_len * sizeof(int));
 
     int j;
-    printf("\n");
+    
     for (int i = 0; i < set2->set_len; i++)
     {
         for (j = 0; j < set1->set_len; j++)
@@ -164,31 +187,32 @@ int Union(universe_t *universe, set_t *set1, set_t *set2)
         }
     }
 
-    printf("S ");
+    printf("S");
     for (int i = 0; i < len; i++)
     {
-        printf("%s ", universe->items[uni[i]]);
+        printf(" %s", universe->items[uni[i]]);
     }
-
+    printf("\n");
     free(uni);
     return true;
 }
 
 void intersect(universe_t *universe, set_t *A, set_t *B)
 {
-    printf("\n");
-    printf("S ");
+    
+    printf("S");
     for (int i = 0; i < A->set_len; i++)
     {
         for (int j = 0; j < B->set_len; j++)
         {
             if (A->items[i] == B->items[j])
             {
-                printf("%s ", universe->items[A->items[i]]);
+                printf(" %s", universe->items[A->items[i]]);
                 break;
             }
         }
     }
+    printf("\n");
 }
 
 int minus(universe_t *universe, set_t *set1, set_t *set2)
@@ -200,8 +224,8 @@ int minus(universe_t *universe, set_t *set1, set_t *set2)
         return errMsg("Allocation failed\n", false);
 
     memcpy(min, set1->items, set1->set_len * sizeof(int));
-    printf("\n");
-    printf("S ");
+    
+    printf("S");
     for (int i = 0; i < set1->set_len; i++)
     {
         for (int j = 0; j < set2->set_len; j++)
@@ -213,9 +237,9 @@ int minus(universe_t *universe, set_t *set1, set_t *set2)
             }
         }
         if (min[i] != EMPTY_INDEX)
-            printf("%s ", universe->items[min[i]]);
+            printf(" %s", universe->items[min[i]]);
     }
-
+    printf("\n");
     free(min);
     return true;
 }
@@ -240,11 +264,11 @@ set_t subseteq(set_t *A, set_t *B, bool print)
         return terminus;
     if (count == A->set_len)
     {
-        printf("\ntrue");
+        printf("true\n");
     }
     else
     {
-        printf("\nfalse");
+        printf("false\n");
     }
     return terminus;
 }
@@ -256,7 +280,7 @@ bool subset(set_t *A, set_t *B)
     set_t temp;
     if (A->set_len == 0)
     {
-        printf("\ntrue");
+        printf("true\n");
         return true;
     }
 
@@ -267,19 +291,19 @@ bool subset(set_t *A, set_t *B)
 
     if (!temp.set_len)
     {
-        printf("\nfalse");
+        printf("false\n");
         return false;
     }
 
     else if (temp.set_len < B->set_len)
     {
-        printf("\ntrue");
+        printf("true\n");
         return true;
     }
 
     else
     {
-        printf("\nfalse");
+        printf("false\n");
         return false;
     }
 }
@@ -288,12 +312,12 @@ bool equals(set_t *set1, set_t *set2)
 {
     if (!set1->set_len && !set2->set_len)
     {
-        printf("\ntrue");
+        printf("true\n");
         return true;
     }
     else if (set1->set_len != set2->set_len)
     {
-        printf("\nfalse");
+        printf("false\n");
         return false;
     }
 
@@ -310,11 +334,11 @@ bool equals(set_t *set1, set_t *set2)
         }
         if (!status)
         {
-            printf("\nfalse");
+            printf("false\n");
             return false;
         }
     }
-    printf("\ntrue");
+    printf("true\n");
     return true;
 }
 
@@ -330,10 +354,10 @@ bool reflexive(universe_t *uni, relation_t *rel)
     }
     if (reflexiveUnitsCount == uni->universe_len)
     {
-        printf("\ntrue");
+        printf("true\n");
         return true;
     }
-    printf("\nfalse");
+    printf("false\n");
     return false;
 }
 
@@ -351,11 +375,11 @@ bool symmetric(relation_t *rel)
         }
         if (!hasSymmetricUnit)
         {
-            printf("\nfalse");
+            printf("false\n");
             return false;
         }
     }
-    printf("\ntrue");
+    printf("true\n");
     return true;
 }
 
@@ -367,12 +391,12 @@ bool antisymmetric(relation_t *rel)
         {
             if (rel->items[i].x == rel->items[j].y && rel->items[j].x == rel->items[i].y && rel->items[i].x != rel->items[i].y)
             {
-                printf("\nfalse");
+                printf("false\n");
                 return false;
             }
         }
     }
-    printf("\ntrue");
+    printf("true\n");
     return true;
 }
 
@@ -396,7 +420,7 @@ bool transitive(relation_t *rel)
                 }
                 if (!status)
                 {
-                    printf("\nfalse");
+                    printf("false\n");
                     return false;
                 }
             }
@@ -426,7 +450,7 @@ bool transitive(relation_t *rel)
             }
         }
     } */
-    printf("\ntrue");
+    printf("true\n");
     return true;
 }
 
@@ -439,13 +463,13 @@ bool function(universe_t *uni, relation_t *rel)
         {
             if ((rel->items[i].x == rel->items[j].x) && (rel->items[i].y != rel->items[j].y))
             {
-                printf("\nfalse");
+                printf("false\n");
                 return false;
             }
         }
     }
 
-    printf("\ntrue");
+    printf("true\n");
     return true;
 }
 
@@ -455,8 +479,8 @@ bool domain(universe_t *uni, relation_t *rel)
     int domainCount = 0;
     if (domain == NULL)
         return false;
-    printf("\n");
-    printf("S ");
+    
+    printf("S");
     for (int i = 0; i < rel->relation_len; i++)
     {
         bool status = false;
@@ -470,12 +494,12 @@ bool domain(universe_t *uni, relation_t *rel)
         }
         if (!status)
         {
-            printf("%s ", uni->items[rel->items[i].x]);
+            printf(" %s", uni->items[rel->items[i].x]);
             domain[domainCount] = rel->items[i].x;
             domainCount++;
         }
     }
-
+    printf("\n");
     free(domain);
     return true;
 }
@@ -486,8 +510,7 @@ bool codomain(universe_t *uni, relation_t *rel)
     int domainCount = 0;
     if (domain == NULL)
         return false;
-    printf("\n");
-    printf("S ");
+    printf("S");
     for (int i = 0; i < rel->relation_len; i++)
     {
         bool status = false;
@@ -501,12 +524,12 @@ bool codomain(universe_t *uni, relation_t *rel)
         }
         if (!status)
         {
-            printf("%s ", uni->items[rel->items[i].y]);
+            printf(" %s", uni->items[rel->items[i].y]);
             domain[domainCount] = rel->items[i].y;
             domainCount++;
         }
     }
-
+    printf("\n");
     free(domain);
     return true;
 }
@@ -559,13 +582,23 @@ int readStringFromFile(FILE *file, char **string)
 
 int checkUniverse(char *str, universe_t *universe)
 {
+    for (int i = 0, n = strlen(str); i < n; i++)
+    {
+        if (!isalpha(str[i])) return false;
+    }
+    
+    if (strcmp(str, "false") == 0 || strcmp(str, "true") == 0) return false;
+
+    for (int i = 0; i < COMBINED_FUNCTIONS_LASTINDEX; i++)
+    {
+        if (strcmp(str, functions[i]) == 0) return false;
+    }
+
     for (int i = 0; i < universe->universe_len - 1; i++)
     {
-        if (strcmp(universe->items[i], str) == 0)
-        {
-            return false;
-        }
+        if (strcmp(universe->items[i], str) == 0) return false;
     }
+
     return true;
 }
 
@@ -853,28 +886,29 @@ void printUniverse(universe_t *universe)
     {
         printf(" %s", universe->items[i]);
     }
+    printf("\n");
 }
 
 // print set contents
 void printSet(set_t *set, universe_t *universe)
 {
-    printf("\n");
     printf("S");
     for (int i = 0; i < set->set_len; i++)
     {
         printf(" %s", universe->items[set->items[i]]);
     }
+    printf("\n");
 }
 
 // print relation contents
 void printRelation(relation_t *relation, universe_t *universe)
 {
-    printf("\n");
     printf("R");
     for (int i = 0; i < relation->relation_len; i++)
     {
         printf(" (%s %s)", universe->items[relation->items[i].x], universe->items[relation->items[i].y]);
     }
+    printf("\n");
 }
 
 // returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
@@ -1101,28 +1135,7 @@ int pickAndCallFunction(universe_t *universe, setList_t *sets, relationList_t *r
     return status;
 }
 
-char functions[22][14] = {"empty",
-                          "card",
-                          "complement",
-                          "union",
-                          "intersect",
-                          "minus",
-                          "subsetq",
-                          "subset",
-                          "equals",
-                          "reflexive",
-                          "symmetric",
-                          "antisymmetric",
-                          "transitive",
-                          "function",
-                          "domain",
-                          "codomain",
-                          "closure_ref",
-                          "closure_sym",
-                          "closure_trans",
-                          "injective",
-                          "surjective",
-                          "bijective"};
+
 
 int matchStringToFunc(char *command, char functions[22][14])
 {
@@ -1335,13 +1348,12 @@ int readFile(FILE *file)
         }
         case 'C':
         {
-
             //I suppose prints will happen in each function
 
             if (!readCommands(&universe, &relations, &sets, file, count, true))
             {
                 destructor(&universe, &relations, &sets, file);
-                return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                return errMsg("In readCommand.\n", EXIT_FAILURE);
             }
             break;
         }
