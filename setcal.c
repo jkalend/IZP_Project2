@@ -106,11 +106,10 @@ void *bigBrainRealloc(void *ptr, size_t size)
         return tmp;
 }
 
-//FIXME temporary
-bool empty(set_t *set)
+bool empty(set_t *A)
 {
 
-    if (!set->set_len)
+    if (!A->set_len)
     {
         printf("true\n");
         return true;
@@ -120,12 +119,12 @@ bool empty(set_t *set)
     return false;
 }
 
-void card(set_t *set)
+void card(set_t *A)
 {
-    printf("%d\n", set->set_len);
+    printf("%d\n", A->set_len);
 }
 
-int complement(universe_t *universe, set_t *set) //TODO TEST
+int complement(universe_t *universe, set_t *A) //TODO TEST
 {
     int *wholeSet = NULL;
     wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
@@ -137,9 +136,9 @@ int complement(universe_t *universe, set_t *set) //TODO TEST
     {
         wholeSet[o] = o;
     }
-    for (int o = 0; o < set->set_len; o++)
+    for (int o = 0; o < A->set_len; o++)
     {
-        wholeSet[set->items[o]] = -1;
+        wholeSet[A->items[o]] = -1;
     }
     for (int o = 0; o < universe->universe_len; o++)
     {
@@ -286,6 +285,7 @@ set_t subseteq(set_t *A, set_t *B, bool print)
     }
     return terminus;
 }
+
 ///subset() checks whether A is a proper subset of B
 /// \param A is the suspected proper subset
 /// \param B is the suspected proper superset
@@ -322,25 +322,25 @@ bool subset(set_t *A, set_t *B)
     }
 }
 
-bool equals(set_t *set1, set_t *set2)
+bool equals(set_t *A, set_t *B)
 {
-    if (!set1->set_len && !set2->set_len)
+    if (!A->set_len && !B->set_len)
     {
         printf("true\n");
         return true;
     }
-    else if (set1->set_len != set2->set_len)
+    else if (A->set_len != B->set_len)
     {
         printf("false\n");
         return false;
     }
 
-    for (int i = 0; i < set1->set_len; i++)
+    for (int i = 0; i < A->set_len; i++)
     {
         bool status = false;
-        for (int j = 0; j < set1->set_len; j++)
+        for (int j = 0; j < A->set_len; j++)
         {
-            if (set1->items[i] == set2->items[j])
+            if (A->items[i] == B->items[j])
             {
                 status = true;
                 break;
@@ -356,12 +356,12 @@ bool equals(set_t *set1, set_t *set2)
     return true;
 }
 
-bool reflexive(universe_t *uni, relation_t *rel)
+bool reflexive(universe_t *uni, relation_t *R)
 {
     int reflexiveUnitsCount = 0;
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
-        if (rel->items[i].x == rel->items[i].y)
+        if (R->items[i].x == R->items[i].y)
         {
             reflexiveUnitsCount++;
         }
@@ -375,14 +375,14 @@ bool reflexive(universe_t *uni, relation_t *rel)
     return false;
 }
 
-bool symmetric(relation_t *rel)
+bool symmetric(relation_t *R)
 {
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
         bool hasSymmetricUnit = false;
-        for (int j = 0; j < rel->relation_len; j++)
+        for (int j = 0; j < R->relation_len; j++)
         {
-            if (rel->items[i].x == rel->items[j].y && rel->items[j].x == rel->items[i].y)
+            if (R->items[i].x == R->items[j].y && R->items[j].x == R->items[i].y)
             {
                 hasSymmetricUnit = true;
             }
@@ -397,13 +397,13 @@ bool symmetric(relation_t *rel)
     return true;
 }
 
-bool antisymmetric(relation_t *rel)
+bool antisymmetric(relation_t *R)
 {
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
-        for (int j = 0; j < rel->relation_len; j++)
+        for (int j = 0; j < R->relation_len; j++)
         {
-            if (rel->items[i].x == rel->items[j].y && rel->items[j].x == rel->items[i].y && rel->items[i].x != rel->items[i].y)
+            if (R->items[i].x == R->items[j].y && R->items[j].x == R->items[i].y && R->items[i].x != R->items[i].y)
             {
                 printf("false\n");
                 return false;
@@ -414,19 +414,19 @@ bool antisymmetric(relation_t *rel)
     return true;
 }
 
-bool transitive(relation_t *rel)
+bool transitive(relation_t *R)
 {
 
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
-        for (int j = 0; j < rel->relation_len; j++)
+        for (int j = 0; j < R->relation_len; j++)
         {
-            if (rel->items[i].y == rel->items[j].x)
+            if (R->items[i].y == R->items[j].x)
             {
                 bool status = false;
-                for (int k = 0; k < rel->relation_len; k++)
+                for (int k = 0; k < R->relation_len; k++)
                 {
-                    if (rel->items[k].x == rel->items[i].x && rel->items[k].y == rel->items[j].y)
+                    if (R->items[k].x == R->items[i].x && R->items[k].y == R->items[j].y)
                     {
                         status = true;
                         break;
@@ -441,16 +441,16 @@ bool transitive(relation_t *rel)
         }
     }
 
-    /* for (int i = 0; i < rel->relation_len; i++)
+    /* for (int i = 0; i < R->relation_len; i++)
     {
-        for (int j = 0; j < rel->relation_len; j++)
+        for (int j = 0; j < R->relation_len; j++)
         {
-            if (rel->items[i].y == rel->items[j].x)
+            if (R->items[i].y == R->items[j].x)
             {
                 bool hasTransitiveUnit = false;
-                for (int k = 0; k < rel->relation_len; k++)
+                for (int k = 0; k < R->relation_len; k++)
                 {
-                    if (rel->items[i].x == rel->items[k].x == 0 && rel->items[j].y == rel->items[k].y)
+                    if (R->items[i].x == R->items[k].x == 0 && R->items[j].y == R->items[k].y)
                     {
                         hasTransitiveUnit = true;
                         break;
@@ -468,14 +468,13 @@ bool transitive(relation_t *rel)
     return true;
 }
 
-bool function(universe_t *uni, relation_t *rel)
+bool function(relation_t *R)
 {
-    int units = 0;
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
-        for (int j = 0; j < rel->relation_len; j++)
+        for (int j = 0; j < R->relation_len; j++)
         {
-            if ((rel->items[i].x == rel->items[j].x) && (rel->items[i].y != rel->items[j].y))
+            if ((R->items[i].x == R->items[j].x) && (R->items[i].y != R->items[j].y))
             {
                 printf("false\n");
                 return false;
@@ -487,20 +486,20 @@ bool function(universe_t *uni, relation_t *rel)
     return true;
 }
 
-bool domain(universe_t *uni, relation_t *rel)
+bool domain(universe_t *uni, relation_t *R)
 {
-    int *domain = malloc(rel->relation_len * sizeof(int));
+    int *domain = malloc(R->relation_len * sizeof(int));
     int domainCount = 0;
     if (domain == NULL)
         return false;
     
     printf("S");
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
         bool status = false;
         for (int j = 0; j < domainCount; j++)
         {
-            if (rel->items[i].x == domain[j])
+            if (R->items[i].x == domain[j])
             {
                 status = true;
                 break;
@@ -508,8 +507,8 @@ bool domain(universe_t *uni, relation_t *rel)
         }
         if (!status)
         {
-            printf(" %s", uni->items[rel->items[i].x]);
-            domain[domainCount] = rel->items[i].x;
+            printf(" %s", uni->items[R->items[i].x]);
+            domain[domainCount] = R->items[i].x;
             domainCount++;
         }
     }
@@ -518,19 +517,19 @@ bool domain(universe_t *uni, relation_t *rel)
     return true;
 }
 
-bool codomain(universe_t *uni, relation_t *rel)
+bool codomain(universe_t *uni, relation_t *R)
 {
-    int *domain = malloc(rel->relation_len * sizeof(int));
+    int *domain = malloc(R->relation_len * sizeof(int));
     int domainCount = 0;
     if (domain == NULL)
         return false;
     printf("S");
-    for (int i = 0; i < rel->relation_len; i++)
+    for (int i = 0; i < R->relation_len; i++)
     {
         bool status = false;
         for (int j = 0; j < domainCount; j++)
         {
-            if (rel->items[i].y == domain[j])
+            if (R->items[i].y == domain[j])
             {
                 status = true;
                 break;
@@ -538,8 +537,8 @@ bool codomain(universe_t *uni, relation_t *rel)
         }
         if (!status)
         {
-            printf(" %s", uni->items[rel->items[i].y]);
-            domain[domainCount] = rel->items[i].y;
+            printf(" %s", uni->items[R->items[i].y]);
+            domain[domainCount] = R->items[i].y;
             domainCount++;
         }
     }
@@ -1073,7 +1072,7 @@ int callRelFunction(universe_t *universe, relationList_t *relations, char *comma
         status = transitive(rel);
         break;
     case 13:
-        status = function(universe, rel);
+        status = function(rel);
         break;
     case 14:
         if (!domain(universe, rel))
