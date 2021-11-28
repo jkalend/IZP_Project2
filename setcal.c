@@ -22,7 +22,7 @@ char functions[][14] = {"empty",
                           "union",
                           "intersect",
                           "minus",
-                          "subsetq",
+                          "subseteq",
                           "subset",
                           "equals",
                           "reflexive",
@@ -151,25 +151,30 @@ int complement(universe_t *universe, set_t *set) //TODO TEST
     return true;
 }
 
-int Union(universe_t *universe, set_t *set1, set_t *set2)
+int Union(universe_t *universe, set_t *A, set_t *B)
 {
     int len;
+    set_t *bigger;
+    set_t *smaller;
+    if (A->set_len > B->set_len) bigger = A, smaller = B;
+    else bigger = B, smaller = A;
+
     int *uni = NULL;
-    uni = bigBrainRealloc(uni, set1->set_len * sizeof(int));
+    uni = bigBrainRealloc(uni, bigger->set_len * sizeof(int));
     if (uni == NULL)
         return errMsg("Allocation failed\n", false);
 
-    len = set1->set_len;
+    len = bigger->set_len;
 
-    memcpy(uni, set1->items, set1->set_len * sizeof(int));
+    memcpy(uni, bigger->items, bigger->set_len * sizeof(int));
 
     int j;
-    
-    for (int i = 0; i < set2->set_len; i++)
+
+    for (int i = 0; i < bigger->set_len; i++)
     {
-        for (j = 0; j < set1->set_len; j++)
+        for (j = 0; j < smaller->set_len; j++)
         {
-            if (set1->items[j] == set2->items[i])
+            if (smaller->items[j] == bigger->items[i])
             {
                 j = 0;
                 break;
@@ -177,13 +182,22 @@ int Union(universe_t *universe, set_t *set1, set_t *set2)
         }
         if (j != 0)
         {
+            int o = 0;
+            for (; o < len; o++)
+            {
+                if (uni[o] == smaller->items[j-1])
+                {
+                    o = -1;
+                    break;
+                }
+            }
+            if (o == -1) break;
             len++;
             uni = bigBrainRealloc(uni, len * sizeof(int));
             if (uni == NULL)
                 return errMsg("Allocation failed\n", false);
 
-            memcpy(&uni[len - 1], &set2->items[i], sizeof(int));
-            // uni[len-1] = set2->items[i];
+            memcpy(&uni[len - 1], &smaller->items[j-1], sizeof(int));
         }
     }
 
