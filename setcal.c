@@ -257,7 +257,7 @@ int minus(universe_t *universe, set_t *set1, set_t *set2)
     return true;
 }
 
-set_t subseteq(set_t *A, set_t *B, bool print)
+bool subseteq(set_t *A, set_t *B, bool print)
 {
     int count = 0;
     for (int i = 0; i < A->set_len; i++)
@@ -270,53 +270,33 @@ set_t subseteq(set_t *A, set_t *B, bool print)
             }
         }
     }
-    set_t terminus = {.set_len = 0}; // pro naznaceni ze A neni podmnozinou
-    if (!print && count == A->set_len)
-        return *A;
-    else if (!print && count != A->set_len)
-        return terminus;
-    if (count == A->set_len)
-    {
-        printf("true\n");
-    }
-    else
-    {
-        printf("false\n");
-    }
-    return terminus;
-}
 
-///subset() checks whether A is a proper subset of B
-/// \param A is the suspected proper subset
-/// \param B is the suspected proper superset
-bool subset(set_t *A, set_t *B)
-{
-    set_t temp;
-    if (A->set_len == 0)
+    if(!print && count == A->set_len)
+    {
+        return true;
+    }
+    else if (print && count == A->set_len)
     {
         printf("true\n");
         return true;
     }
-
-    else
-    {
-        temp = subseteq(A, B, false);
-    }
-
-    if (!temp.set_len)
+    else if (print && count != A->set_len)
     {
         printf("false\n");
         return false;
     }
-
-    else if (temp.set_len < B->set_len)
-    {
-        printf("true\n");
-        return true;
-    }
-
     else
     {
+        return false;
+    }
+}
+
+bool subset(set_t *A, set_t *B) {
+    int control = subseteq(A, B, false);
+    if (control == 1 && A->set_len < B->set_len) {
+        printf("true\n");
+        return true;
+    } else {
         printf("false\n");
         return false;
     }
