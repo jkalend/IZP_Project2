@@ -293,10 +293,13 @@ bool subseteq(set_t *A, set_t *B, bool print)
 
 bool subset(set_t *A, set_t *B) {
     int control = subseteq(A, B, false);
-    if (control == 1 && A->set_len < B->set_len) {
+    if (control == 1 && A->set_len < B->set_len)
+    {
         printf("true\n");
         return true;
-    } else {
+    }
+    else
+    {
         printf("false\n");
         return false;
     }
