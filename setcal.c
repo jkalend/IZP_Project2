@@ -993,36 +993,45 @@ long *readIndex(FILE *file, int count, int *numberOfIndices)
 {
     char *idx;
     char *ptr;
-    long *indexes = NULL, digit;
+    long *indices = NULL, digit = 0;
     int order = 0;
     int status;
     do
     {
         if (!(status = readStringFromFile(file, &idx)))
+        {
+            free(idx);
             return NULL;
+        }
 
-        indexes = bigBrainRealloc(indexes, sizeof(long));
-        if (indexes == NULL)
+        order++;
+
+        indices = bigBrainRealloc(indices, order * sizeof(long));
+        if (indices == NULL)
+        {
+            free(idx);
             return NULL;
-
+        }
         digit = strtol(idx, &ptr, 10);
         if (digit < 1 || *ptr != '\0')
         {
             errMsg("Command taking wrong index", false);
+            free(idx);
             return NULL;
         }
         else if (digit > count)
         {
-            indexes[0] = 0;
-            return indexes;
+            indices[0] = 0;
+            free(idx);
+            return indices;
         }
         else
-            indexes[order] = digit;
+            memcpy (&indices[order-1], &digit, sizeof(long));
 
-        order++;
+        free(idx);
     } while (status != END_OF_LINE);
     *numberOfIndices = order;
-    return indexes;
+    return indices;
 }
 
 int callSetFunction(universe_t *universe, setList_t *sets, char *command, long *indices, int numberOfIndices, int funcNumber)
@@ -1210,8 +1219,6 @@ int pickAndCallFunction(universe_t *universe, setList_t *sets, relationList_t *r
     return status;
 }
 
-
-
 int matchStringToFunc(char *command)
 {
     for (int i = 0; i < 19; i++)
@@ -1224,7 +1231,7 @@ int matchStringToFunc(char *command)
     return -1;
 }
 
-int findByLineIndex(int index, setList_t *sets, relationList_t *relations, int *isSet)
+int findByLineIndex(long index, setList_t *sets, relationList_t *relations, int *isSet)
 {
     for (int i = 0; i < sets->setList_len; i++)
     {
@@ -1248,7 +1255,6 @@ int findByLineIndex(int index, setList_t *sets, relationList_t *relations, int *
     return 0;
 }
 
-// FIXME if this DOESNT work let me know as soon as possible
 int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count, bool shouldExecuteCommand)
 {
     if (shouldExecuteCommand)
