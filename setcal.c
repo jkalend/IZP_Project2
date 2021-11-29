@@ -95,6 +95,12 @@ int errMsg(char *msg, int status)
 // big brain time
 void *bigBrainRealloc(void *ptr, size_t size)
 {
+    if (size <= 0)
+    {
+        free(ptr);
+        return NULL;
+    }
+
     void *tmp = realloc(ptr, size);
     if (tmp == NULL)
     {
@@ -580,13 +586,22 @@ int readStringFromFile(FILE *file, char **string)
     return END_OF_LINE;
 }
 
+int testSpace(FILE *file)
+{
+    char c;
+    fscanf(file, "%c", &c);
+    if (c == '\n') return true;
+    else if (c != DELIM) return errMsg("No space between identifier and it's definition.\n", false);
+    else return DELIM;
+}
+
 int checkUniverse(char *str, universe_t *universe)
 {
     for (int i = 0, n = strlen(str); i < n; i++)
     {
         if (!isalpha(str[i])) return false;
     }
-    
+
     if (strcmp(str, "false") == 0 || strcmp(str, "true") == 0) return false;
 
     for (int i = 0; i < COMBINED_FUNCTIONS_LASTINDEX; i++)
@@ -606,8 +621,11 @@ int readUniverse(universe_t *universe, FILE *file)
 {
     universe->universe_len = 0;
     universe->items = NULL;
-    int status;
     char *str;
+
+    int c, status;
+    if ((c = testSpace(file)) != DELIM) return c;
+
     do
     {
         // try reading a string from the specified file
@@ -624,161 +642,46 @@ int readUniverse(universe_t *universe, FILE *file)
         if (status == END_OF_LINE && strlen(str) == 0)
         {
             free(str);
-            return true;
+            return EMPTY_INDEX;
         }
 
-        else
+        universe->items = bigBrainRealloc(universe->items, ++universe->universe_len * sizeof(char *));
+
+        // check for memory errors
+        if (universe->items == NULL)
         {
-            universe->items = bigBrainRealloc(universe->items, ++universe->universe_len * sizeof(char *));
-
-            // check for memory errors
-            if (universe->items == NULL)
-            {
-                free(str);
-                return errMsg("Reallocation failed.\n", false);
-            }
-
-            if (!checkUniverse(str, universe))
-            {
-                free(str);
-                return errMsg("Duplicity in universe\n", false);
-            }
-            universe->items[universe->universe_len - 1] = str;
+            free(str);
+            return errMsg("Reallocation failed.\n", false);
         }
 
+        universe->items[universe->universe_len - 1] = str;
+
+        if (!checkUniverse(universe->items[universe->universe_len - 1], universe))
+        {
+            return errMsg("Duplicity in universe\n", false);
+        }
     } while (status != END_OF_LINE);
 
     // if the loop finishes, we successfully read the universe
     return true;
 }
 
-// find the index of the specified string from the universe
-int findUniverseIndex(char *str, universe_t *universe)
-{
-    for (int i = 0; i < universe->universe_len; i++)
-    {
-        if (strcmp(str, universe->items[i]) == 0)
-        {
-            return i;
-        }
-    }
-
-    // the item wasn't found in the universe, so it's an invalid item
-    return INVALID_INDEX;
-}
-
-int readSet(set_t *set, FILE *file, universe_t *universe)
-{
-    set->set_len = 0;
-    set->items = NULL;
-
-    int idx, status;
-    char *str;
-
-    do
-    {
-        status = readStringFromFile(file, &str);
-
-        // empty set
-        if (strlen(str) == 0 && status == END_OF_LINE)
-            return true;
-
-        idx = findUniverseIndex(str, universe);
-        free(str);
-
-        if (!status)
-            return false;
-        else
-        {
-            if (idx == INVALID_INDEX)
-            {
-                return errMsg("The set contains items that are not part of the universe.\n", false);
-            }
-            else
-            {
-                set->items = bigBrainRealloc(set->items, ++set->set_len * sizeof(int));
-                if (set->items == NULL)
-                    return errMsg("Allocation failed.\n", false);
-
-                for (int i = 0; i < set->set_len - 1; i++)
-                {
-                    if (set->items[i] == idx)
-                        return errMsg("Duplicity in a set\n", false);
-                }
-
-                set->items[set->set_len - 1] = idx;
-            }
-        }
-    } while (status != END_OF_LINE);
-
-    // if the loop finishes, we sucessfully read the set
-    return true;
-}
-
-int readRelation(relation_t *relation, FILE *file, universe_t *universe)
-{
-    relation->relation_len = 0;
-    relation->items = NULL;
-
-    int statusX, statusY, idx, idy;
-    char *str;
-    do
-    {
-        statusX = readStringFromFile(file, &str);
-
-        if (!statusX)
-            return false;
-        else if (statusX == END_OF_LINE && strlen(str) == 0)
-            return true;
-        else if (str[0] != '(')
-            return errMsg("Invalid relation.\n", false);
-
-        // compare without opening brace
-        idx = findUniverseIndex(&str[1], universe);
-        free(str);
-
-        statusY = readStringFromFile(file, &str);
-
-        if (!statusY)
-            return false;
-        else if (str[strlen(str) - 1] != ')')
-            return errMsg("Invalid relation.\n", false);
-
-        // get rid of closing brace before the comparison
-        str[strlen(str) - 1] = '\0';
-        idy = findUniverseIndex(str, universe);
-        free(str);
-
-        if (idx == INVALID_INDEX || idy == INVALID_INDEX)
-            return errMsg("The relation contains items that are not part of the universe.\n", false);
-
-        relation->items = bigBrainRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
-        if (relation->items == NULL)
-        {
-            return errMsg("Allocation failed.\n", false);
-        }
-
-        for (int i = 0; i < relation->relation_len - 1; i++)
-        {
-            if (relation->items[i].x == idx && relation->items[i].y == idy)
-                return errMsg("Duplicity in a relation\n", false);
-        }
-        relation->items[relation->relation_len - 1].x = idx;
-        relation->items[relation->relation_len - 1].y = idy;
-
-    } while (statusX != END_OF_LINE && statusY != END_OF_LINE);
-
-    // if the loop finishes, we sucessfully read the relation
-    return true;
-}
-
 int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
 {
-    if (readUniverse(universe, file))
+    int status = readUniverse(universe, file);
+
+    if (status)
     {
         sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
         if (sets->sets == NULL)
             return false;
+
+        if (status == EMPTY_INDEX)
+        {
+            sets->sets[sets->setList_len - 1].items = NULL;
+            sets->sets[sets->setList_len - 1].set_len = 0;
+            return true;
+        }
 
         sets->sets[sets->setList_len - 1].items = malloc(universe->universe_len * sizeof(int));
         if (sets->sets[sets->setList_len - 1].items == NULL)
@@ -796,6 +699,113 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
         return false;
 }
 
+// find the index of the specified string from the universe
+int findUniverseIndex(char *str, universe_t *universe)
+{
+    for (int i = 0; i < universe->universe_len; i++)
+    {
+        if (strcmp(str, universe->items[i]) == 0)
+        {
+            return i;
+        }
+    }
+
+    // the item wasn't found in the universe, so it's an invalid item
+    return INVALID_INDEX;
+}
+
+int containsRelationUnit(relation_t *relation, relationUnit_t *unit)
+{
+    for (int i = 0; i < relation->relation_len; i++)
+    {
+        if (relation->items[i].x == unit->x && relation->items[i].y == unit->y)
+        {
+            return i;
+        }
+    }
+    return INVALID_INDEX;
+}
+
+int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
+{
+    char *strX, *strY;
+
+    int statusX = readStringFromFile(file, &strX);
+    if (!statusX) return false;
+    if (statusX == END_OF_LINE && strlen(strX) == 0)
+    {
+        free(strX);
+        return EMPTY_INDEX;
+    } 
+
+    int statusY = readStringFromFile(file, &strY);
+    if (!statusY) return false;
+
+    if (strX[0] != '(' || strY[strlen(strY) - 1] != ')')
+    {
+        free(strX); free(strY);
+        return errMsg("Invalid relation.\n", false);
+    }
+
+    strY[strlen(strY) - 1] = '\0';
+
+    // compare without opening and closing brace
+    int idx = findUniverseIndex(&strX[1], universe);
+    int idy = findUniverseIndex(strY, universe);
+
+    free(strX);
+    free(strY);
+    
+    if (idx == INVALID_INDEX || idy == INVALID_INDEX)
+        return errMsg("The relation contains items that are not part of the universe.\n", false);
+
+    unit->x = idx;
+    unit->y = idy;
+
+    return statusY;
+}
+
+int readRelation(relation_t *relation, FILE *file, universe_t *universe)
+{
+    relation->relation_len = 0;
+    relation->items = NULL;
+
+    int c, status;
+    if ((c = testSpace(file)) != DELIM) return c;
+
+    do
+    {
+        relation->items = bigBrainRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
+        if (relation->items == NULL)
+        {
+            return errMsg("Allocation failed.\n", false);
+        }
+
+        status = readRelationUnit(&relation->items[relation->relation_len - 1], file, universe);
+        if (!status) 
+        {
+            return false;
+        }
+        else if (status == EMPTY_INDEX) 
+        {
+            relation->items = bigBrainRealloc(relation->items, --relation->relation_len * sizeof(relationUnit_t));
+            if (relation->items == NULL && relation->relation_len != 0) // if the new size is 0, bigBrainRealloc is equivalent to free
+            {
+                return errMsg("Allocation failed.\n", false);
+            }
+            break;
+        }
+        
+        if (containsRelationUnit(relation, &relation->items[relation->relation_len - 1]) != relation->relation_len - 1)
+        {
+            return errMsg("Duplicity in a relation\n", false);
+        }
+    } while (status != END_OF_LINE);
+
+    // if the loop finishes, we sucessfully read the relation
+    return true;
+}
+
 int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 {
     relations->relations = bigBrainRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
@@ -805,15 +815,76 @@ int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
     {
         return errMsg("Allocation failed\n", false);
     }
-
+    
     if (readRelation(&relations->relations[relations->relationList_len - 1], file, universe))
     {
         return true;
     }
-    else
+    else return false;
+}
+
+int readSetItem(int *idx, FILE *file, universe_t *universe)
+{
+    char *str;
+    int status = readStringFromFile(file, &str);
+    if (!status)
     {
+        free(str);
         return false;
     }
+    // empty set or trailing whitespace
+    if (strlen(str) == 0 && status == END_OF_LINE)
+    {
+        free(str);
+        return EMPTY_INDEX;
+    }
+
+    *idx = findUniverseIndex(str, universe);
+    free(str);
+
+    if (*idx == INVALID_INDEX)
+    {
+        return errMsg("The set contains items that are not part of the universe.\n", false);
+    }
+    return status;
+}
+
+int readSet(set_t *set, FILE *file, universe_t *universe)
+{
+    set->set_len = 0;
+    set->items = NULL;
+
+    int c, status;
+    if ((c = testSpace(file)) != DELIM) return c;
+
+    do
+    {
+        set->items = bigBrainRealloc(set->items, ++set->set_len * sizeof(int));
+        if (set->items == NULL)
+            return errMsg("Allocation failed.\n", false);
+
+        status = readSetItem(&set->items[set->set_len - 1], file, universe);
+
+        if (!status) return false;
+        else if (status == EMPTY_INDEX)
+        {
+            set->items = bigBrainRealloc(set->items, --set->set_len * sizeof(int));
+
+            if (set->items == NULL && set->set_len != 0)
+                return errMsg("Allocation failed.\n", false);
+
+            break;
+        }
+
+        for (int i = 0; i < set->set_len - 1; i++)
+        {
+            if (set->items[i] == set->items[set->set_len - 1])
+                return errMsg("Duplicity in a set\n", false);
+        }
+    } while (status != END_OF_LINE);
+
+    // if the loop finishes, we sucessfully read the set
+    return true;
 }
 
 int appendSet(setList_t *sets, universe_t *universe, FILE *file)
@@ -1234,17 +1305,7 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
     return true;
 }
 
-bool containsRelationUnit(relation_t *relation, relationUnit_t *unit)
-{
-    for (int i = 0; i < relation->relation_len; i++)
-    {
-        if (relation->items[i].x == unit->x && relation->items[i].y == unit->y)
-        {
-            return true;
-        }
-    }
-    return false;
-}
+
 
 int transitiveClosure(relation_t *relation, universe_t *universe)
 {
@@ -1261,7 +1322,7 @@ int transitiveClosure(relation_t *relation, universe_t *universe)
             if (tmp.items[i].y == tmp.items[j].x)
             {
                 relationUnit_t unit = {.x = tmp.items[i].x, .y = tmp.items[j].y};
-                if (!containsRelationUnit(&tmp, &unit))
+                if (containsRelationUnit(&tmp, &unit) < 0)
                 {
                     tmp.items = bigBrainRealloc(tmp.items, ++tmp.relation_len * sizeof(relationUnit_t));
                     if (tmp.items == NULL)
@@ -1291,20 +1352,23 @@ void destructor(universe_t *universe, relationList_t *relations, setList_t *sets
 int readFile(FILE *file)
 {
     char c;
-    int count = 0;
+    int count = 0, hasU = 0, hasRorS = 0, hasC = 0;
     universe_t universe;
     relationList_t relations = {.relationList_len = 0, .relations = NULL};
     setList_t sets = {.setList_len = 0, .sets = NULL};
 
     while (fscanf(file, "%c", &c) != EOF)
     {
-        count++;
+        if (++count > MAX_NUM_LINES) return errMsg("The file cannot be more than 1000 lines long.\n", EXIT_FAILURE);
+
         switch (c)
         {
         case 'U':
         {
             if (appendUniverse(&universe, &sets, file))
             {
+                if (++hasU > 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
                 sets.sets[sets.setList_len - 1].index = count;
                 printUniverse(&universe);
             }
@@ -1318,8 +1382,11 @@ int readFile(FILE *file)
         }
         case 'S':
         {
+            if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
             if (appendSet(&sets, &universe, file))
             {
+                hasRorS = 1;
                 sets.sets[sets.setList_len - 1].index = count;
                 printSet(&sets.sets[sets.setList_len - 1], &universe);
             }
@@ -1333,8 +1400,11 @@ int readFile(FILE *file)
         }
         case 'R':
         {
+            if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
             if (appendRelation(&relations, &universe, file))
             {
+                hasRorS = 1;
                 relations.relations[relations.relationList_len - 1].index = count;
                 printRelation(&relations.relations[relations.relationList_len - 1], &universe);
             }
@@ -1348,7 +1418,9 @@ int readFile(FILE *file)
         }
         case 'C':
         {
+            hasC = 1;
             //I suppose prints will happen in each function
+            if (!hasU || !hasRorS) errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
             if (!readCommands(&universe, &relations, &sets, file, count, true))
             {
