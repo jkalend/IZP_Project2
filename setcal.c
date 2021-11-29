@@ -17,27 +17,27 @@
 #define COMBINED_FUNCTIONS_LASTINDEX 22
 
 char functions[][14] = {"empty",
-                          "card",
-                          "complement",
-                          "union",
-                          "intersect",
-                          "minus",
-                          "subseteq",
-                          "subset",
-                          "equals",
-                          "reflexive",
-                          "symmetric",
-                          "antisymmetric",
-                          "transitive",
-                          "function",
-                          "domain",
-                          "codomain",
-                          "closure_ref",
-                          "closure_sym",
-                          "closure_trans",
-                          "injective",
-                          "surjective",
-                          "bijective"};
+                        "card",
+                        "complement",
+                        "union",
+                        "intersect",
+                        "minus",
+                        "subseteq",
+                        "subset",
+                        "equals",
+                        "reflexive",
+                        "symmetric",
+                        "antisymmetric",
+                        "transitive",
+                        "function",
+                        "domain",
+                        "codomain",
+                        "closure_ref",
+                        "closure_sym",
+                        "closure_trans",
+                        "injective",
+                        "surjective",
+                        "bijective"};
 
 // STRUCTURES
 
@@ -139,7 +139,7 @@ int complement(universe_t *universe, set_t *A)
         wholeSet = bigBrainRealloc(wholeSet, sizeof(int));
     if (wholeSet == NULL)
         return errMsg("Allocation failed\n", false);
-    
+
     printf("S");
     for (int o = 0; o < universe->universe_len; o++)
     {
@@ -224,7 +224,7 @@ int Union(universe_t *universe, set_t *A, set_t *B)
 
 void intersect(universe_t *universe, set_t *A, set_t *B)
 {
-    
+
     printf("S");
     for (int i = 0; i < A->set_len; i++)
     {
@@ -251,7 +251,7 @@ int minus(universe_t *universe, set_t *A, set_t *B)
         return errMsg("Allocation failed\n", false);
 
     memcpy(min, A->items, A->set_len * sizeof(int));
-    
+
     printf("S");
     for (int i = 0; i < A->set_len; i++)
     {
@@ -489,7 +489,7 @@ bool domain(universe_t *uni, relation_t *R)
     int domainCount = 0;
     if (domain == NULL)
         return false;
-    
+
     printf("S");
     for (int i = 0; i < R->relation_len; i++)
     {
@@ -565,7 +565,7 @@ int readStringFromFile(FILE *file, char **string)
             return errMsg("Items cannot be more than 30 characters long.\n", false);
         }
 
-        // reached the delimiting character or newline/EOF -> current string is complete
+            // reached the delimiting character or newline/EOF -> current string is complete
         else if ((c == DELIM && strLen != 0) || c == '\n')
         {
             // resize the string to it's true value
@@ -580,7 +580,7 @@ int readStringFromFile(FILE *file, char **string)
                 return true;
         }
 
-        // the start condition is met and all whitespace is gone -> start adding characters to the string
+            // the start condition is met and all whitespace is gone -> start adding characters to the string
         else if (c != DELIM)
         {
             (*string)[strLen] = c;
@@ -740,7 +740,7 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
     {
         free(strX);
         return EMPTY_INDEX;
-    } 
+    }
 
     int statusY = readStringFromFile(file, &strY);
     if (!statusY) return false;
@@ -759,7 +759,7 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
 
     free(strX);
     free(strY);
-    
+
     if (idx == INVALID_INDEX || idy == INVALID_INDEX)
         return errMsg("The relation contains items that are not part of the universe.\n", false);
 
@@ -786,11 +786,11 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         }
 
         status = readRelationUnit(&relation->items[relation->relation_len - 1], file, universe);
-        if (!status) 
+        if (!status)
         {
             return false;
         }
-        else if (status == EMPTY_INDEX) 
+        else if (status == EMPTY_INDEX)
         {
             relation->items = bigBrainRealloc(relation->items, --relation->relation_len * sizeof(relationUnit_t));
             if (relation->items == NULL && relation->relation_len != 0) // if the new size is 0, bigBrainRealloc is equivalent to free
@@ -799,7 +799,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
             }
             break;
         }
-        
+
         if (containsRelationUnit(relation, &relation->items[relation->relation_len - 1]) != relation->relation_len - 1)
         {
             return errMsg("Duplicity in a relation\n", false);
@@ -819,7 +819,7 @@ int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
     {
         return errMsg("Allocation failed\n", false);
     }
-    
+
     if (readRelation(&relations->relations[relations->relationList_len - 1], file, universe))
     {
         return true;
@@ -1043,49 +1043,49 @@ int callSetFunction(universe_t *universe, setList_t *sets, char *command, long *
 
     switch (funcNumber)
     {
-    case 0:
-        status = empty(set1);
-        break;
-    case 1:
-        card(set1);
-        break;
-    case 2:
-        complement(universe, set1);
-        break;
+        case 0:
+            status = empty(set1);
+            break;
+        case 1:
+            card(set1);
+            break;
+        case 2:
+            complement(universe, set1);
+            break;
 
-    default:
-        if (numberOfIndices > 1 && indices[1] < sets->setList_len)
-        {
-            set2 = &sets->sets[indices[1]];
-        }
-        else
-        {
-            return -1;
-        }
-        indicesUsed = 2;
-        switch (funcNumber)
-        {
-        case 3:
-            Union(universe, set1, set2);
-            break;
-        case 4:
-            intersect(universe, set1, set2);
-            break;
-        case 5:
-            minus(universe, set1, set2);
-            break;
-        case 6:
-            /* status =  */ subseteq(set1, set2, true); // TODO upravit subsetq tak aby vracel bool
-            break;
-        case 7:
-            status = subset(set1, set2);
-            break;
-        case 8:
-            status = equals(set1, set2);
-            break;
         default:
-            return -1;
-        }
+            if (numberOfIndices > 1 && indices[1] < sets->setList_len)
+            {
+                set2 = &sets->sets[indices[1]];
+            }
+            else
+            {
+                return -1;
+            }
+            indicesUsed = 2;
+            switch (funcNumber)
+            {
+                case 3:
+                    Union(universe, set1, set2);
+                    break;
+                case 4:
+                    intersect(universe, set1, set2);
+                    break;
+                case 5:
+                    minus(universe, set1, set2);
+                    break;
+                case 6:
+                    /* status =  */ subseteq(set1, set2, true); // TODO upravit subsetq tak aby vracel bool
+                    break;
+                case 7:
+                    status = subset(set1, set2);
+                    break;
+                case 8:
+                    status = equals(set1, set2);
+                    break;
+                default:
+                    return -1;
+            }
     }
 
     if (!(numberOfIndices - indicesUsed))
@@ -1121,45 +1121,45 @@ int callRelFunction(universe_t *universe, relationList_t *relations, char *comma
 
     switch (funcNumber)
     {
-    case 9:
-        status = reflexive(universe, rel);
-        break;
-    case 10:
-        status = symmetric(rel);
-        break;
-    case 11:
-        status = antisymmetric(rel);
-        break;
-    case 12:
-        status = transitive(rel);
-        break;
-    case 13:
-        status = function(rel);
-        break;
-    case 14:
-        if (!domain(universe, rel))
-        {
-            return -1;
-        }
-        break;
-    case 15:
-        if (!codomain(universe, rel))
-        {
-            return -1;
-        }
-        break;
-        /* case 16:
-        closure_ref(...);
-        break;
-    case 17:
-        closure_sym(...);
-        break;
-    case 18:
-        closure_trans(...);
-        break; */
+        case 9:
+            status = reflexive(universe, rel);
+            break;
+        case 10:
+            status = symmetric(rel);
+            break;
+        case 11:
+            status = antisymmetric(rel);
+            break;
+        case 12:
+            status = transitive(rel);
+            break;
+        case 13:
+            status = function(rel);
+            break;
+        case 14:
+            if (!domain(universe, rel))
+            {
+                return -1;
+            }
+            break;
+        case 15:
+            if (!codomain(universe, rel))
+            {
+                return -1;
+            }
+            break;
+            /* case 16:
+            closure_ref(...);
+            break;
+        case 17:
+            closure_sym(...);
+            break;
+        case 18:
+            closure_trans(...);
+            break; */
 
-    default:
-        break;
+        default:
+            break;
     }
     if (!(numberOfIndices - indicesUsed))
         return 0;
@@ -1367,80 +1367,81 @@ int readFile(FILE *file)
 
         switch (c)
         {
-        case 'U':
-        {
-            if (appendUniverse(&universe, &sets, file))
+            case 'U':
             {
-                if (++hasU > 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                if (appendUniverse(&universe, &sets, file))
+                {
+                    if (++hasU > 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
-                sets.sets[sets.setList_len - 1].index = count;
-                printUniverse(&universe);
+                    sets.sets[sets.setList_len - 1].index = count;
+                    printUniverse(&universe);
+                }
+                else
+                {
+                    destructor(&universe, &relations, &sets, file);
+                    return EXIT_FAILURE;
+                }
+
+                break;
             }
-            else
+            case 'S':
+            {
+                if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
+                if (appendSet(&sets, &universe, file))
+                {
+                    hasRorS = 1;
+                    sets.sets[sets.setList_len - 1].index = count;
+                    printSet(&sets.sets[sets.setList_len - 1], &universe);
+                }
+                else
+                {
+                    destructor(&universe, &relations, &sets, file);
+                    return EXIT_FAILURE;
+                }
+
+                break;
+            }
+            case 'R':
+            {
+                if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
+                if (appendRelation(&relations, &universe, file))
+                {
+                    hasRorS = 1;
+                    relations.relations[relations.relationList_len - 1].index = count;
+                    printRelation(&relations.relations[relations.relationList_len - 1], &universe);
+                }
+                else
+                {
+                    destructor(&universe, &relations, &sets, file);
+                    return EXIT_FAILURE;
+                }
+
+                break;
+            }
+            case 'C':
+            {
+                hasC = 1;
+                //I suppose prints will happen in each function
+                if (!hasU || !hasRorS) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
+                if (!readCommands(&universe, &relations, &sets, file, count, true))
+                {
+                    destructor(&universe, &relations, &sets, file);
+                    return errMsg("In readCommand.\n", EXIT_FAILURE);
+                }
+                break;
+            }
+
+            default:
             {
                 destructor(&universe, &relations, &sets, file);
-                return EXIT_FAILURE;
+                return errMsg("Invalid file structure.\n", EXIT_FAILURE);
             }
-
-            break;
-        }
-        case 'S':
-        {
-            if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-
-            if (appendSet(&sets, &universe, file))
-            {
-                hasRorS = 1;
-                sets.sets[sets.setList_len - 1].index = count;
-                printSet(&sets.sets[sets.setList_len - 1], &universe);
-            }
-            else
-            {
-                destructor(&universe, &relations, &sets, file);
-                return EXIT_FAILURE;
-            }
-
-            break;
-        }
-        case 'R':
-        {
-            if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-
-            if (appendRelation(&relations, &universe, file))
-            {
-                hasRorS = 1;
-                relations.relations[relations.relationList_len - 1].index = count;
-                printRelation(&relations.relations[relations.relationList_len - 1], &universe);
-            }
-            else
-            {
-                destructor(&universe, &relations, &sets, file);
-                return EXIT_FAILURE;
-            }
-
-            break;
-        }
-        case 'C':
-        {
-            hasC = 1;
-            //I suppose prints will happen in each function
-            if (!hasU || !hasRorS) errMsg("Invalid file structure.\n", EXIT_FAILURE);
-
-            if (!readCommands(&universe, &relations, &sets, file, count, true))
-            {
-                destructor(&universe, &relations, &sets, file);
-                return errMsg("In readCommand.\n", EXIT_FAILURE);
-            }
-            break;
-        }
-
-        default:
-        {
-            destructor(&universe, &relations, &sets, file);
-            return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-        }
         }
     }
+    if (!hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
     destructor(&universe, &relations, &sets, file);
     return 0;
 }
