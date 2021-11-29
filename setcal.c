@@ -130,10 +130,13 @@ void card(set_t *A)
     printf("%d\n", A->set_len);
 }
 
-int complement(universe_t *universe, set_t *A) //TODO TEST
+int complement(universe_t *universe, set_t *A)
 {
     int *wholeSet = NULL;
-    wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
+    if (universe->universe_len)
+        wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
+    else if (!universe->universe_len)
+        wholeSet = bigBrainRealloc(wholeSet, sizeof(int));
     if (wholeSet == NULL)
         return errMsg("Allocation failed\n", false);
     
@@ -165,7 +168,10 @@ int Union(universe_t *universe, set_t *A, set_t *B)
     else bigger = B, smaller = A;
 
     int *uni = NULL;
-    uni = bigBrainRealloc(uni, bigger->set_len * sizeof(int));
+    if (bigger->set_len)
+        uni = bigBrainRealloc(uni, bigger->set_len * sizeof(int));
+    else if (!bigger->set_len)
+        uni = bigBrainRealloc(uni, sizeof(int));
     if (uni == NULL)
         return errMsg("Allocation failed\n", false);
 
@@ -234,22 +240,24 @@ void intersect(universe_t *universe, set_t *A, set_t *B)
     printf("\n");
 }
 
-int minus(universe_t *universe, set_t *set1, set_t *set2)
+int minus(universe_t *universe, set_t *A, set_t *B)
 {
     int *min = NULL;
-    min = bigBrainRealloc(min, set1->set_len * sizeof(int));
-
+    if (A->set_len)
+        min = bigBrainRealloc(min, A->set_len * sizeof(int));
+    else if (!A->set_len)
+        min = bigBrainRealloc(min, sizeof(int));
     if (min == NULL)
         return errMsg("Allocation failed\n", false);
 
-    memcpy(min, set1->items, set1->set_len * sizeof(int));
+    memcpy(min, A->items, A->set_len * sizeof(int));
     
     printf("S");
-    for (int i = 0; i < set1->set_len; i++)
+    for (int i = 0; i < A->set_len; i++)
     {
-        for (int j = 0; j < set2->set_len; j++)
+        for (int j = 0; j < B->set_len; j++)
         {
-            if (set1->items[i] == set2->items[j])
+            if (A->items[i] == B->items[j])
             {
                 min[i] = EMPTY_INDEX;
                 break;
@@ -1204,7 +1212,7 @@ int pickAndCallFunction(universe_t *universe, setList_t *sets, relationList_t *r
 
 
 
-int matchStringToFunc(char *command, char functions[22][14])
+int matchStringToFunc(char *command)
 {
     for (int i = 0; i < 19; i++)
     {
@@ -1268,7 +1276,7 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
                 return false;
             }
         }
-        int funcNumber = matchStringToFunc(command, functions);
+        int funcNumber = matchStringToFunc(command);
         if (funcNumber == -1)
         {
             free(command);
@@ -1302,7 +1310,7 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
 }
 
 
-
+//TODO
 int transitiveClosure(relation_t *relation, universe_t *universe)
 {
     relation_t tmp = {.items = NULL, .relation_len = relation->relation_len};
