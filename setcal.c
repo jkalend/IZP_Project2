@@ -41,58 +41,65 @@ char functions[][14] = {"empty",
 
 // STRUCTURES
 
-// struct to store universe contents
+/// struct to store universe contents
 typedef struct
 {
-    char **items;
-    int universe_len;
+    char **items; ///< array of strings storing contents of a universe
+    int universe_len; ///< number of elements in a universe
 } universe_t;
 
-// struct to store a single set
+/// struct to store a single set
 typedef struct
 {
-    int *items;
-    int set_len;
-    long index;
+    int *items; ///< array of indices referring to a universe
+    int set_len; ///< length of a set
+    long index; ///< index of a line to which a set belongs
 } set_t;
 
-// struct to store all sets in the file
+/// struct to store all sets in the file
 typedef struct
 {
-    set_t *sets;
-    int setList_len;
+    set_t *sets; ///< array of all sets
+    int setList_len; ///< count of all sets
 } setList_t;
 
-// indices of the related strings from universe
+/// indices of the related strings from universe
 typedef struct
 {
-    int x;
-    int y;
+    int x; ///< first element in a binary relation
+    int y; ///< second element in a binary relation
 } relationUnit_t;
 
-//struct to store a relationship set
+///struct to store a relationship set
 typedef struct
 {
-    relationUnit_t *items;
-    int relation_len;
-    long index;
+    relationUnit_t *items; ///< array of binary relations
+    int relation_len; ///< count of binary relations
+    long index; ///< index of a line to which a relation belongs
 } relation_t;
 
-// struct to store all relationships in a file
+/// struct to store all relationships in a file
 typedef struct
 {
-    relation_t *relations;
-    int relationList_len;
+    relation_t *relations; ///< array of all relations
+    int relationList_len; ///< count of all relations
 } relationList_t;
 
-// function for printing error messages to stderr
+
+/// Prints error messages to stderr
+/// \param msg string to be printed to stderr
+/// \param status an integer to be returned by the function
+/// \return a status variable
 int errMsg(char *msg, int status)
 {
     fprintf(stderr, "%s", msg);
     return status;
 }
 
-// big brain time
+/// Safer and overall better realloc
+/// \param ptr a dynamically allocated array
+/// \param size indicates the size of the dynamic array after reallocation
+/// \return NULL on failure, pointer to the new memory on success
 void *bigBrainRealloc(void *ptr, size_t size)
 {
     if (size <= 0)
@@ -112,6 +119,9 @@ void *bigBrainRealloc(void *ptr, size_t size)
         return tmp;
 }
 
+/// Decides whether the set is empty or not, and prints the result
+/// \param A a set suspected of being empty
+/// \return true when set is empty and false otherwise
 bool empty(set_t *A)
 {
 
@@ -125,11 +135,17 @@ bool empty(set_t *A)
     return false;
 }
 
+/// Prints out the length of a set
+/// \param A a set of which length is to be printed
 void card(set_t *A)
 {
     printf("%d\n", A->set_len);
 }
 
+/// Prints out a complement of a set to the universe
+/// \param universe the universe over which the set is defined
+/// \param A set of which we want the complement
+/// \return false on failure of an allocation, true on success
 int complement(universe_t *universe, set_t *A)
 {
     int *wholeSet = NULL;
@@ -159,6 +175,11 @@ int complement(universe_t *universe, set_t *A)
     return true;
 }
 
+/// Prints out the union of two sets
+/// \param universe the universe over which the sets are defined
+/// \param A the first set to be put in the union
+/// \param B the second set to be put in the union
+/// \return false on failure of an allocation, true on success
 int Union(universe_t *universe, set_t *A, set_t *B)
 {
     int len;
@@ -222,6 +243,10 @@ int Union(universe_t *universe, set_t *A, set_t *B)
     return true;
 }
 
+/// Prints out the intersection of two sets
+/// \param universe the universe over which the sets are defined
+/// \param A the first set in the intersection
+/// \param B the second set in the intersection
 void intersect(universe_t *universe, set_t *A, set_t *B)
 {
 
@@ -240,6 +265,11 @@ void intersect(universe_t *universe, set_t *A, set_t *B)
     printf("\n");
 }
 
+/// Prints out the result of a subtraction of a set B from set A
+/// \param universe the universe over which the sets are defined
+/// \param A the set from which elements are subtracted
+/// \param B the set containing the subtracted elements
+/// \return false on failure of an allocation, true on success
 int minus(universe_t *universe, set_t *A, set_t *B)
 {
     int *min = NULL;
@@ -271,6 +301,11 @@ int minus(universe_t *universe, set_t *A, set_t *B)
     return true;
 }
 
+/// Prints true when the set A is a subset of the set B, and false otherwise. Or returns the same boolean value when print == true
+/// \param A a set that is a suspected subset of the set B
+/// \param B a set that is a suspected superset of the set A
+/// \param print decides whether the result is to be printed or returned, true to be printed and false to be returned
+/// \return true when the set A is a subset of the set B, false otherwise
 bool subseteq(set_t *A, set_t *B, bool print)
 {
     int count = 0;
@@ -305,6 +340,10 @@ bool subseteq(set_t *A, set_t *B, bool print)
     }
 }
 
+/// Prints true when the set A is a proper subset of the set B, and false otherwise
+/// \param A a set that is a suspected proper subset of the set B
+/// \param B a set that is a suspected superset of the set A
+/// \return true when the set A is a proper subset of the set B, false otherwise
 bool subset(set_t *A, set_t *B) {
     int control = subseteq(A, B, false);
     if (control == 1 && A->set_len < B->set_len)
@@ -319,6 +358,10 @@ bool subset(set_t *A, set_t *B) {
     }
 }
 
+/// Prints true when the sets are equal and false otherwise
+/// \param A the first set of the comparison
+/// \param B the second set of the comparison
+/// \return true when the sets are equal, false otherwise
 bool equals(set_t *A, set_t *B)
 {
     if (!A->set_len && !B->set_len)
