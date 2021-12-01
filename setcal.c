@@ -104,14 +104,14 @@ void *bigBrainRealloc(void *ptr, size_t size)
 {
     if (size <= 0)
     {
-        free(ptr);
+        if (ptr != NULL) free(ptr);
         return NULL;
     }
 
     void *tmp = realloc(ptr, size);
     if (tmp == NULL)
     {
-        free(ptr);
+        if (ptr != NULL) free(ptr);
         return NULL;
     }
 
@@ -587,6 +587,12 @@ bool codomain(universe_t *uni, relation_t *R)
     return true;
 }
 
+/// Function for reading strings seperated by whitespace from the specified file
+/// \param file file to be read from
+/// \param string container for the new string
+/// \return false when an error occurs during reading
+/// \return true when a string is successfully read
+/// \return END_OF_LINE when a newline or EOF is reached at the end of the string
 int readStringFromFile(FILE *file, char **string)
 {
     char c;
@@ -608,31 +614,31 @@ int readStringFromFile(FILE *file, char **string)
             return errMsg("Items cannot be more than 30 characters long.\n", false);
         }
 
-            // reached the delimiting character or newline/EOF -> current string is complete
-        else if ((c == DELIM && strLen != 0) || c == '\n')
-        {
-            // resize the string to it's true value
-            *string = bigBrainRealloc(*string, (strLen + 1) * sizeof(char));
+        else if (c == '\n') return END_OF_LINE;
+        else if (c == DELIM && strLen != 0) return true;
 
-            if (*string == NULL)
-                return errMsg("Reallocation failed\n", false);
-
-            if (c == '\n')
-                return END_OF_LINE;
-            else
-                return true;
-        }
-
-            // the start condition is met and all whitespace is gone -> start adding characters to the string
+        // the start condition is met and all whitespace is gone -> start adding characters to the string
         else if (c != DELIM)
         {
-            (*string)[strLen] = c;
-            (*string)[++strLen] = '\0';
+            if (++strLen > MAX_STR_LEN) 
+            {
+                free(*string);
+                return errMsg("Items cannot be more than 30 characters long.\n", false);
+            }
+
+            (*string)[strLen - 1] = c;
+            (*string)[strLen] = '\0';
+            
         }
     }
     return END_OF_LINE;
 }
 
+/// Checks for space between U, R, S and it's contents
+/// \param file file to be read from
+/// \return DELIM when a space is present
+/// \return true when a newline is present (special condition for empty sets, ...)
+/// \return false when no space or newline is present
 int testSpace(FILE *file)
 {
     char c;
@@ -642,6 +648,11 @@ int testSpace(FILE *file)
     else return DELIM;
 }
 
+/// Decides whether a string is a valid universe item or not
+/// \param str new universe item to be validated
+/// \param universe list of already existing universe items
+/// \return true when the item meets all criteria (no duplicates, only alphabethical characters, no function names, true, false)
+/// \return false when at least one criterium is not fulfilled
 int checkUniverse(char *str, universe_t *universe)
 {
     for (int i = 0, n = strlen(str); i < n; i++)
@@ -664,12 +675,13 @@ int checkUniverse(char *str, universe_t *universe)
     return true;
 }
 
+/// Reads and validates the universe contents
+/// \param universe struct where the contents are saved
+/// \param file file to be read from
+/// \return true when no error occurs during reading, false otherwise
 int readUniverse(universe_t *universe, FILE *file)
 {
-    universe->universe_len = 0;
-    universe->items = NULL;
     char *str;
-
     int c, status;
     if ((c = testSpace(file)) != DELIM) return c;
 
@@ -679,13 +691,9 @@ int readUniverse(universe_t *universe, FILE *file)
         status = readStringFromFile(file, &str);
 
         // an error occured while reading the file
-        if (!status)
-        {
-            free(str);
-            return false;
-        }
-
-        // empty universe
+        if (!status) return false;
+    
+        // get rid of trailing whitespace
         if (status == END_OF_LINE && strlen(str) == 0)
         {
             free(str);
@@ -703,6 +711,7 @@ int readUniverse(universe_t *universe, FILE *file)
 
         universe->items[universe->universe_len - 1] = str;
 
+        // validate the newly added item
         if (!checkUniverse(universe->items[universe->universe_len - 1], universe))
         {
             return errMsg("Duplicity in universe\n", false);
@@ -713,16 +722,24 @@ int readUniverse(universe_t *universe, FILE *file)
     return true;
 }
 
+/// Read universe and append it in set structure to the setList so it can be used in the same way as a regular set
+/// \param universe the universe 
+/// \param sets structure containing all sets in the file
+/// \param file file to be read from
+/// \return true when no error occurs during reading, false otherwise
 int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
 {
+    // read universe
     int status = readUniverse(universe, file);
 
     if (status)
     {
+        // allocate memory for universe set
         sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
         if (sets->sets == NULL)
             return false;
 
+        // universe is empty, append empty set
         if (status == EMPTY_INDEX)
         {
             sets->sets[sets->setList_len - 1].items = NULL;
@@ -730,6 +747,7 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
             return true;
         }
 
+        // universe is not empty, append it's items to setlist
         sets->sets[sets->setList_len - 1].items = malloc(universe->universe_len * sizeof(int));
         if (sets->sets[sets->setList_len - 1].items == NULL)
             return false;
@@ -746,7 +764,10 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
         return false;
 }
 
-// find the index of the specified string from the universe
+/// Find the index of the specified string from the universe
+/// \param str the string whose index we are looking for
+/// \param universe the universe in which we are finding the index
+/// \return the index when the universe contains such item, otherwise returns INVALID_INDEX
 int findUniverseIndex(char *str, universe_t *universe)
 {
     for (int i = 0; i < universe->universe_len; i++)
@@ -761,6 +782,10 @@ int findUniverseIndex(char *str, universe_t *universe)
     return INVALID_INDEX;
 }
 
+/// Check whether a relation contains the specified relation pair
+/// \param relation the relation in which we are searching
+/// \param unit the relation pair we are looking for in the relation
+/// \return the index when the relation contains such relation pair, otherwise returns INVALID_INDEX
 int containsRelationUnit(relation_t *relation, relationUnit_t *unit)
 {
     for (int i = 0; i < relation->relation_len; i++)
@@ -773,12 +798,22 @@ int containsRelationUnit(relation_t *relation, relationUnit_t *unit)
     return INVALID_INDEX;
 }
 
+/// Parse a relation pair from the specified file
+/// \param unit container for the relation pair to be read
+/// \param file the file to be read from
+/// \param universe the universe the members of the pair have to be part of
+/// \return true if a relation pair is successfully read
+/// \return EMPTY_INDEX if a trailing whitespace is read
+/// \return END_OF_LINE if newline is the next character in the file after the relation pair
+/// \return false if an error happens during reading
 int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
 {
     char *strX, *strY;
 
     int statusX = readStringFromFile(file, &strX);
     if (!statusX) return false;
+   
+    // trailing whitespace has been read
     if (statusX == END_OF_LINE && strlen(strX) == 0)
     {
         free(strX);
@@ -787,7 +822,8 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
 
     int statusY = readStringFromFile(file, &strY);
     if (!statusY) return false;
-
+    
+    // check if the pair is in valid format
     if (strX[0] != '(' || strY[strlen(strY) - 1] != ')')
     {
         free(strX); free(strY);
@@ -812,14 +848,22 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
     return statusY;
 }
 
+/// Parse an entire relation from the specified file
+/// \param relation container for the relation to be read
+/// \param file the file to be read from
+/// \param universe the universe the members of the relation have to be part of
+/// \return true if a relation is successfully read
+/// \return false if an error happens during reading
 int readRelation(relation_t *relation, FILE *file, universe_t *universe)
 {
     relation->relation_len = 0;
     relation->items = NULL;
 
+    // test for opening space
     int c, status;
     if ((c = testSpace(file)) != DELIM) return c;
 
+    // read relation pairs from the file until end of line
     do
     {
         relation->items = bigBrainRealloc(relation->items, ++relation->relation_len * sizeof(relationUnit_t));
@@ -836,13 +880,14 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         else if (status == EMPTY_INDEX)
         {
             relation->items = bigBrainRealloc(relation->items, --relation->relation_len * sizeof(relationUnit_t));
-            if (relation->items == NULL && relation->relation_len != 0) // if the new size is 0, bigBrainRealloc is equivalent to free
+            if (relation->items == NULL && relation->relation_len != 0) 
             {
                 return errMsg("Allocation failed.\n", false);
             }
             break;
         }
 
+        // check for duplicates in the current relation
         if (containsRelationUnit(relation, &relation->items[relation->relation_len - 1]) != relation->relation_len - 1)
         {
             return errMsg("Duplicity in a relation\n", false);
@@ -853,6 +898,12 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
     return true;
 }
 
+/// Add a relation to the end of the relationList
+/// \param relations container that stores all relations present in the file
+/// \param universe the universe the members of the relations have to be part of
+/// \param file the file to be read from
+/// \return true if a relation is successfully appended to the list
+/// \return false if an error happens during the process
 int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
 {
     relations->relations = bigBrainRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
@@ -870,16 +921,21 @@ int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
     else return false;
 }
 
+/// Parse a set item from the specified file
+/// \param idx container for the set item to be read
+/// \param file the file to be read from
+/// \param universe the universe the set item has to be part of
+/// \return true if a set item is successfully read
+/// \return EMPTY_INDEX if a trailing whitespace is read
+/// \return END_OF_LINE if newline is the next character in the file after the set item
+/// \return false if an error happens during reading
 int readSetItem(int *idx, FILE *file, universe_t *universe)
 {
     char *str;
     int status = readStringFromFile(file, &str);
-    if (!status)
-    {
-        free(str);
-        return false;
-    }
-    // empty set or trailing whitespace
+    if (!status) return false;
+ 
+    // trailing whitespace has been read
     if (strlen(str) == 0 && status == END_OF_LINE)
     {
         free(str);
@@ -889,6 +945,7 @@ int readSetItem(int *idx, FILE *file, universe_t *universe)
     *idx = findUniverseIndex(str, universe);
     free(str);
 
+    // check for validity of the item read
     if (*idx == INVALID_INDEX)
     {
         return errMsg("The set contains items that are not part of the universe.\n", false);
@@ -896,14 +953,22 @@ int readSetItem(int *idx, FILE *file, universe_t *universe)
     return status;
 }
 
+/// Parse an entire set from the specified file
+/// \param set container for the set to be read
+/// \param file the file to be read from
+/// \param universe the universe the members of the set have to be part of
+/// \return true if a set is successfully read
+/// \return false if an error happens during reading
 int readSet(set_t *set, FILE *file, universe_t *universe)
 {
     set->set_len = 0;
     set->items = NULL;
 
+    // test for opening space or empty set
     int c, status;
     if ((c = testSpace(file)) != DELIM) return c;
 
+    // read set items until newline is reached
     do
     {
         set->items = bigBrainRealloc(set->items, ++set->set_len * sizeof(int));
@@ -911,8 +976,9 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
             return errMsg("Allocation failed.\n", false);
 
         status = readSetItem(&set->items[set->set_len - 1], file, universe);
-
         if (!status) return false;
+
+        // trailing whitespace has been read
         else if (status == EMPTY_INDEX)
         {
             set->items = bigBrainRealloc(set->items, --set->set_len * sizeof(int));
@@ -923,6 +989,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
             break;
         }
 
+        // check for duplicates in the current set
         for (int i = 0; i < set->set_len - 1; i++)
         {
             if (set->items[i] == set->items[set->set_len - 1])
@@ -954,7 +1021,8 @@ int appendSet(setList_t *sets, universe_t *universe, FILE *file)
     }
 }
 
-// free the universe struct
+/// Free all dynamically allocated memory the universe
+/// \param unvierse the universe to be freed
 void freeUniverse(universe_t *universe)
 {
     for (int i = 0; i < universe->universe_len; i++)
@@ -964,7 +1032,8 @@ void freeUniverse(universe_t *universe)
     free(universe->items);
 }
 
-// free all malloced sets
+/// Free all dynamically allocated memory for sets
+/// \param sets the setList to be freed
 void freeSets(setList_t *sets)
 {
     if (sets->setList_len == 0)
@@ -980,7 +1049,8 @@ void freeSets(setList_t *sets)
     free(sets->sets);
 }
 
-// free all malloced relations
+/// Free all dynamically allocated memory for relations
+/// \param relations the relationList to be freed
 void freeRelations(relationList_t *relations)
 {
     if (relations->relationList_len == 0)
@@ -996,7 +1066,8 @@ void freeRelations(relationList_t *relations)
     free(relations->relations);
 }
 
-// print universe contents
+/// Print the universe contents to stdout
+/// \param universe the universe to be printed
 void printUniverse(universe_t *universe)
 {
     printf("U");
@@ -1007,7 +1078,9 @@ void printUniverse(universe_t *universe)
     printf("\n");
 }
 
-// print set contents
+/// Print set contents to stdout
+/// \param set the set to be printed
+/// \param universe the universe the set members belong to
 void printSet(set_t *set, universe_t *universe)
 {
     printf("S");
@@ -1018,7 +1091,9 @@ void printSet(set_t *set, universe_t *universe)
     printf("\n");
 }
 
-// print relation contents
+/// Print relation contents to stdout
+/// \param relation the relation to be printed
+/// \param universe the universe the relation members belong to
 void printRelation(relation_t *relation, universe_t *universe)
 {
     printf("R");
@@ -1043,7 +1118,6 @@ long *readIndex(FILE *file, int count, int *numberOfIndices)
     {
         if (!(status = readStringFromFile(file, &idx)))
         {
-            free(idx);
             return NULL;
         }
 
@@ -1305,9 +1379,8 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
         char *command;
         int status;
         status = readStringFromFile(file, &command);
-
-        if (status == INVALID_INDEX)
-            return false;
+        if (!status) return false;
+   
         int numberOfIndices = 0;
         long *lineIndices = readIndex(file, count, &numberOfIndices);
         if (!numberOfIndices)
@@ -1362,6 +1435,11 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
 //TODO
 int transitiveClosure(relation_t *relation, universe_t *universe)
 {
+    if (relation->relation_len == 0)
+    {
+        printf("R\n");
+        return true;
+    }
     relation_t tmp = {.items = NULL, .relation_len = relation->relation_len};
     tmp.items = malloc(sizeof(relationUnit_t) * relation->relation_len);
     if (tmp.items == NULL)
@@ -1393,7 +1471,11 @@ int transitiveClosure(relation_t *relation, universe_t *universe)
     return true;
 }
 
-// free all dynamic memory
+/// Free all dynamically allocated memory in the program
+/// \param universe the universe to be freed
+/// \param relations the relationList to be freed
+/// \param sets the setList to be freed
+/// \param file the file to be closed
 void destructor(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file)
 {
     freeUniverse(universe);
@@ -1402,11 +1484,15 @@ void destructor(universe_t *universe, relationList_t *relations, setList_t *sets
     fclose(file);
 }
 
+/// Function encapsulating everything that happens with the file
+/// \param file the file to be read
+/// \return 0 if the entire file is successfully read
+/// \return EXIT_FAILURE if an error happens during the file execution
 int readFile(FILE *file)
 {
     char c;
     int count = 0, hasU = 0, hasRorS = 0, hasC = 0;
-    universe_t universe;
+    universe_t universe = {.universe_len = 0, .items = NULL};
     relationList_t relations = {.relationList_len = 0, .relations = NULL};
     setList_t sets = {.setList_len = 0, .sets = NULL};
 
@@ -1495,6 +1581,11 @@ int readFile(FILE *file)
     return 0;
 }
 
+/// Parse input arguments and open file for reading
+/// \param argc number of command line arguments passed to the program
+/// \param argv list of the arguments passed
+/// \return 0 if the file is successfully opened and read
+/// \return EXIT_FAILURE when an error happens during reading or the program is run with invalid args
 int main(int argc, char **argv)
 {
     FILE *f;
