@@ -1086,6 +1086,26 @@ void printRelation(relation_t *relation, universe_t *universe)
     printf("\n");
 }
 
+void printFile(universe_t *universe, relationList_t *relations, setList_t *sets)
+{
+    printUniverse(universe);
+    int i = 0, j = 1;
+    while (i < relations->relationList_len && j < sets->setList_len)
+    {
+        if (relations->relations[i].index < sets->sets[j].index)
+        {
+            printRelation(&relations->relations[i], universe);
+            i++;
+        }
+        else 
+        {
+            printSet(&sets->sets[j], universe);
+            j++;
+        }
+    }
+    while (i < relations->relationList_len) printRelation(&relations->relations[i++], universe);
+    while (j < sets->setList_len) printSet(&sets->sets[j++], universe);
+}
 // returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
 // or contains other symbols than digits
 // on success returns the index as a long int
@@ -1493,9 +1513,7 @@ int readFile(FILE *file)
                         destructor(&universe, &relations, &sets, file);
                         return errMsg("Invalid file structure.\n", EXIT_FAILURE);
                     }
-
                     sets.sets[sets.setList_len - 1].index = count;
-                    printUniverse(&universe);
                 }
                 else
                 {
@@ -1518,7 +1536,6 @@ int readFile(FILE *file)
                 {
                     hasRorS++;
                     sets.sets[sets.setList_len - 1].index = count;
-                    printSet(&set, &universe);
                 }
                 else
                 {
@@ -1540,7 +1557,6 @@ int readFile(FILE *file)
                 {
                     hasRorS++;
                     relations.relations[relations.relationList_len - 1].index = count;
-                    printRelation(&relation, &universe);
                 }
                 else
                 {
@@ -1576,6 +1592,7 @@ int readFile(FILE *file)
         }
     }
     if (!hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+    printFile(&universe, &relations, &sets);
     destructor(&universe, &relations, &sets, file);
     return 0;
 }
