@@ -1378,7 +1378,7 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
     long *lineIndices = readIndex(file, count, &numberOfIndices);
     if (!numberOfIndices)
         return false;
-    long indices[3];
+    long indices[3] = {0};
     int indexType[3];
     for (int i = 0; i < numberOfIndices; i++)
     {
@@ -1406,6 +1406,7 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
         {
             return false;
         }
+
         /* else if(status == 1)
     {
         int line = numberOfIndices - status;
@@ -1424,6 +1425,14 @@ int readCommands(universe_t *universe, relationList_t *relations, setList_t *set
         commands->commands[commands->commandList_len].functionName = command;
         commands->commands[commands->commandList_len].argc = numberOfIndices;
         memcpy(commands->commands[commands->commandList_len].parameters, indices, 3*sizeof(long));
+        commands->commandList_len++;
+        /*
+        fprintf(stderr, "%s", commands->commands[commands->commandList_len].functionName);
+        fprintf(stderr, "%d", commands->commands[commands->commandList_len].argc);
+        for(int i = 0; i < 3; i++) {
+            fprintf(stderr, "%ld", commands->commands[commands->commandList_len].parameters[i]);
+        }
+         */
     }
 
     free(command); // TODO
