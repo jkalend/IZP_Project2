@@ -608,18 +608,13 @@ int readStringFromFile(FILE *file, char **string)
     // read the string, character by character
     while (fscanf(file, "%c", &c) != EOF)
     {
-        // check if the maximum length wasn't reached
-        if (strLen > MAX_STR_LEN)
-        {
-            return errMsg("Items cannot be more than 30 characters long.\n", false);
-        }
-
-        else if (c == '\n') return END_OF_LINE;
+        if (c == '\n') return END_OF_LINE;
         else if (c == DELIM && strLen != 0) return true;
 
         // the start condition is met and all whitespace is gone -> start adding characters to the string
         else if (c != DELIM)
         {
+            // check if the maximum length wasn't reached
             if (++strLen > MAX_STR_LEN) 
             {
                 free(*string);
@@ -898,13 +893,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
     return true;
 }
 
-/// Add a relation to the end of the relationList
-/// \param relations container that stores all relations present in the file
-/// \param universe the universe the members of the relations have to be part of
-/// \param file the file to be read from
-/// \return true if a relation is successfully appended to the list
-/// \return false if an error happens during the process
-int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
+int insertToRelatioList(relation_t *relation, relationList_t *relations)
 {
     relations->relations = bigBrainRealloc(relations->relations, ++relations->relationList_len * sizeof(relation_t));
 
@@ -914,11 +903,9 @@ int appendRelation(relationList_t *relations, universe_t *universe, FILE *file)
         return errMsg("Allocation failed\n", false);
     }
 
-    if (readRelation(&relations->relations[relations->relationList_len - 1], file, universe))
-    {
-        return true;
-    }
-    else return false;
+    relations->relations[relations->relationList_len - 1].relation_len = relation->relation_len;
+    relations->relations[relations->relationList_len - 1].items = relation->items;
+    return true;
 }
 
 /// Parse a set item from the specified file
@@ -1001,7 +988,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
     return true;
 }
 
-int appendSet(setList_t *sets, universe_t *universe, FILE *file)
+int insertToSetList(set_t *set, setList_t *sets)
 {
     sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
 
@@ -1011,14 +998,9 @@ int appendSet(setList_t *sets, universe_t *universe, FILE *file)
         return errMsg("Allocation failed\n", false);
     }
 
-    if (readSet(&sets->sets[sets->setList_len - 1], file, universe))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    sets->sets[sets->setList_len - 1].set_len = set->set_len;
+    sets->sets[sets->setList_len - 1].items = set->items;
+    return true;
 }
 
 /// Free all dynamically allocated memory the universe
@@ -1506,7 +1488,11 @@ int readFile(FILE *file)
             {
                 if (appendUniverse(&universe, &sets, file))
                 {
-                    if (++hasU > 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                    if (++hasU > 1) 
+                    {
+                        destructor(&universe, &relations, &sets, file);
+                        return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                    }
 
                     sets.sets[sets.setList_len - 1].index = count;
                     printUniverse(&universe);
@@ -1521,31 +1507,40 @@ int readFile(FILE *file)
             }
             case 'S':
             {
-                if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-
-                if (appendSet(&sets, &universe, file))
+                if (!hasU || hasC) 
                 {
-                    hasRorS = 1;
+                    destructor(&universe, &relations, &sets, file);
+                    return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                }
+
+                set_t set;
+                if (readSet(&set, file, &universe) && insertToSetList(&set, &sets))
+                {
+                    hasRorS++;
                     sets.sets[sets.setList_len - 1].index = count;
-                    printSet(&sets.sets[sets.setList_len - 1], &universe);
+                    printSet(&set, &universe);
                 }
                 else
                 {
                     destructor(&universe, &relations, &sets, file);
                     return EXIT_FAILURE;
                 }
-
                 break;
             }
             case 'R':
             {
-                if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-
-                if (appendRelation(&relations, &universe, file))
+                if (!hasU || hasC) 
                 {
-                    hasRorS = 1;
+                    destructor(&universe, &relations, &sets, file);
+                    return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                }
+
+                relation_t relation;
+                if (readRelation(&relation, file, &universe) && insertToRelatioList(&relation, &relations))
+                {
+                    hasRorS++;
                     relations.relations[relations.relationList_len - 1].index = count;
-                    printRelation(&relations.relations[relations.relationList_len - 1], &universe);
+                    printRelation(&relation, &universe);
                 }
                 else
                 {
@@ -1559,7 +1554,11 @@ int readFile(FILE *file)
             {
                 hasC = 1;
                 //I suppose prints will happen in each function
-                if (!hasU || !hasRorS) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                if (!hasU || hasRorS < 1) 
+                {
+                    destructor(&universe, &relations, &sets, file);
+                    return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+                }
 
                 if (!readCommands(&universe, &relations, &sets, file, count, true))
                 {
