@@ -85,6 +85,19 @@ typedef struct
     int relationList_len; ///< count of all relations
 } relationList_t;
 
+typedef struct
+{
+    char *functionName;
+    long parameters[3]; ///< array of parameters
+    int argc;
+} command_t;
+
+typedef struct
+{
+    command_t *commands; ///<array of commands>
+    int commandList_len; ///< count of all commands
+}commandList_t;
+
 
 /// Prints error messages to stderr
 /// \param msg string to be printed to stderr
@@ -646,7 +659,7 @@ int testSpace(FILE *file)
 /// Decides whether a string is a valid universe item or not
 /// \param str new universe item to be validated
 /// \param universe list of already existing universe items
-/// \return true when the item meets all criteria (no duplicates, only alphabethical characters, no function names, true, false)
+/// \return true when the item meets all criteria (no duplicates, only alphabetical characters, no function names, true, false)
 /// \return false when at least one criterium is not fulfilled
 int checkUniverse(char *str, universe_t *universe)
 {
@@ -685,7 +698,7 @@ int readUniverse(universe_t *universe, FILE *file)
         // try reading a string from the specified file
         status = readStringFromFile(file, &str);
 
-        // an error occured while reading the file
+        // an error occurred while reading the file
         if (!status) return false;
     
         // get rid of trailing whitespace
@@ -717,7 +730,7 @@ int readUniverse(universe_t *universe, FILE *file)
     return true;
 }
 
-/// Read universe and append it in set structure to the setList so it can be used in the same way as a regular set
+/// Read universe and append it in set structure to the setList, so it can be used in the same way as a regular set
 /// \param universe the universe 
 /// \param sets structure containing all sets in the file
 /// \param file file to be read from
@@ -742,7 +755,7 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
             return true;
         }
 
-        // universe is not empty, append it's items to setlist
+        // universe is not empty, append its items to setlist
         sets->sets[sets->setList_len - 1].items = malloc(universe->universe_len * sizeof(int));
         if (sets->sets[sets->setList_len - 1].items == NULL)
             return false;
@@ -889,7 +902,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the relation
+    // if the loop finishes, we successfully read the relation
     return true;
 }
 
@@ -984,7 +997,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we sucessfully read the set
+    // if the loop finishes, we successfully read the set
     return true;
 }
 
@@ -1004,7 +1017,7 @@ int insertToSetList(set_t *set, setList_t *sets)
 }
 
 /// Free all dynamically allocated memory the universe
-/// \param unvierse the universe to be freed
+/// \param universe the universe to be freed
 void freeUniverse(universe_t *universe)
 {
     for (int i = 0; i < universe->universe_len; i++)
@@ -1203,7 +1216,7 @@ int callSetFunction(universe_t *universe, setList_t *sets, char *command, long *
                     minus(universe, set1, set2);
                     break;
                 case 6:
-                    /* status =  */ subseteq(set1, set2, true); // TODO upravit subsetq tak aby vracel bool
+                    status = subseteq(set1, set2, true);
                     break;
                 case 7:
                     status = subset(set1, set2);
@@ -1374,62 +1387,76 @@ int findByLineIndex(long index, setList_t *sets, relationList_t *relations, int 
     return 0;
 }
 
-int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count, bool shouldExecuteCommand)
+int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count, bool shouldExecuteCommand, commandList_t *commands)
 {
-    if (shouldExecuteCommand)
-    {
-        char *command;
-        int status;
-        status = readStringFromFile(file, &command);
-        if (!status) return false;
-   
-        int numberOfIndices = 0;
-        long *lineIndices = readIndex(file, count, &numberOfIndices);
-        if (!numberOfIndices)
-            return false;
-        long indices[3];
-        int indexType[3];
-        for (int i = 0; i < numberOfIndices; i++)
-        {
+    char *command;
+    int status;
+    status = readStringFromFile(file, &command);
+    if (!status) return false;
 
-            indices[i] = findByLineIndex(lineIndices[i], sets, relations, &indexType[i]);
-            if (!indexType[i])
-            {
-                free(command);
-                free(lineIndices);
-                return false;
-            }
-        }
-        int funcNumber = matchStringToFunc(command);
-        if (funcNumber == -1)
+    int numberOfIndices = 0;
+    long *lineIndices = readIndex(file, count, &numberOfIndices);
+    if (!numberOfIndices)
+        return false;
+    long indices[3] = {0};
+    int indexType[3];
+    for (int i = 0; i < numberOfIndices; i++)
+    {
+
+        indices[i] = findByLineIndex(lineIndices[i], sets, relations, &indexType[i]);
+        if (!indexType[i])
         {
             free(command);
             free(lineIndices);
             return false;
         }
-
-        if (shouldExecuteCommand)
-        {
-            status = pickAndCallFunction(universe, sets, relations, command, indices, indexType, numberOfIndices, funcNumber);
-            if (status == -1)
-            {
-                return false;
-            }
-            /* else if(status == 1)
-        {
-            int line = numberOfIndices - status;
-            jumpToLine(line);
-        } */
-        }
-
+    }
+    int funcNumber = matchStringToFunc(command);
+    if (funcNumber == -1)
+    {
         free(command);
         free(lineIndices);
+        return false;
     }
-    /* else
-    {
-        saveLine();
-    } */
 
+    if (shouldExecuteCommand)
+    {
+        status = pickAndCallFunction(universe, sets, relations, command, indices, indexType, numberOfIndices, funcNumber);
+        if (status == -1)
+        {
+            return false;
+        }
+
+        /* else if(status == 1)
+    {
+        int line = numberOfIndices - status;
+        jumpToLine(line);
+    } */
+    }
+    else if (!shouldExecuteCommand)
+    {
+        commands->commands = bigBrainRealloc(commands->commands, commands->commandList_len + 1);
+        if (commands->commands == NULL)
+        {
+            free(command);
+            free(lineIndices);
+            return false;
+        }
+        commands->commands[commands->commandList_len].functionName = command;
+        commands->commands[commands->commandList_len].argc = numberOfIndices;
+        memcpy(commands->commands[commands->commandList_len].parameters, indices, 3*sizeof(long));
+        commands->commandList_len++;
+        /*
+        fprintf(stderr, "%s", commands->commands[commands->commandList_len].functionName);
+        fprintf(stderr, "%d", commands->commands[commands->commandList_len].argc);
+        for(int i = 0; i < 3; i++) {
+            fprintf(stderr, "%ld", commands->commands[commands->commandList_len].parameters[i]);
+        }
+         */
+    }
+
+    free(command); // TODO
+    free(lineIndices);
     return true;
 }
 
@@ -1497,6 +1524,7 @@ int readFile(FILE *file)
     universe_t universe = {.universe_len = 0, .items = NULL};
     relationList_t relations = {.relationList_len = 0, .relations = NULL};
     setList_t sets = {.setList_len = 0, .sets = NULL};
+    commandList_t commands = {.commandList_len = 0, .commands = NULL};
 
     while (fscanf(file, "%c", &c) != EOF)
     {
@@ -1569,14 +1597,13 @@ int readFile(FILE *file)
             case 'C':
             {
                 hasC = 1;
-                //I suppose prints will happen in each function
-                if (!hasU || hasRorS < 1) 
+                if (!hasU || hasRorS < 1)
                 {
                     destructor(&universe, &relations, &sets, file);
                     return errMsg("Invalid file structure.\n", EXIT_FAILURE);
                 }
 
-                if (!readCommands(&universe, &relations, &sets, file, count, true))
+                if (!readCommands(&universe, &relations, &sets, file, count, true, &commands))
                 {
                     destructor(&universe, &relations, &sets, file);
                     return errMsg("In readCommand.\n", EXIT_FAILURE);
