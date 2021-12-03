@@ -87,8 +87,8 @@ typedef struct
 
 typedef struct
 {
-    char *functionName;
-    long parameters[3]; ///< array of parameters
+    int functionNameIdx;
+    int *parameters; ///< array of parameters
     int argc;
 } command_t;
 
@@ -730,6 +730,22 @@ int readUniverse(universe_t *universe, FILE *file)
     return true;
 }
 
+int insertToSetList(set_t *set, setList_t *sets)
+{
+    sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+
+    // check for memory error
+    if (sets->sets == NULL)
+    {
+        return errMsg("Allocation failed\n", false);
+    }
+
+    sets->sets[sets->setList_len - 1].set_len = set->set_len;
+    sets->sets[sets->setList_len - 1].items = set->items;
+    return true;
+}
+
+
 /// Read universe and append it in set structure to the setList, so it can be used in the same way as a regular set
 /// \param universe the universe 
 /// \param sets structure containing all sets in the file
@@ -742,34 +758,26 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
 
     if (status)
     {
-        // allocate memory for universe set
-        sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
-        if (sets->sets == NULL)
-            return false;
+        set_t set = {.set_len = universe->universe_len, .items = NULL};
 
-        // universe is empty, append empty set
-        if (status == EMPTY_INDEX)
+        if (status == EMPTY_INDEX && insertToSetList(&set, sets)) return true;
+
+        set.items = bigBrainRealloc(set.items, sizeof(int) * set.set_len);
+        if (set.items == NULL) return errMsg("Allocation failed\n", false);
+
+        for (int i = 0; i < set.set_len; i++)
         {
-            sets->sets[sets->setList_len - 1].items = NULL;
-            sets->sets[sets->setList_len - 1].set_len = 0;
-            return true;
+            set.items[i] = i;
         }
 
-        // universe is not empty, append its items to setlist
-        sets->sets[sets->setList_len - 1].items = malloc(universe->universe_len * sizeof(int));
-        if (sets->sets[sets->setList_len - 1].items == NULL)
-            return false;
-
-        for (int i = 0; i < universe->universe_len; i++)
+        if (insertToSetList(&set, sets)) return true;
+        else 
         {
-            sets->sets[sets->setList_len - 1].items[i] = i;
+            free(set.items);
+            return false;
         }
-        sets->sets[sets->setList_len - 1].set_len = universe->universe_len;
-
-        return true;
     }
-    else
-        return false;
+    else return false;
 }
 
 /// Find the index of the specified string from the universe
@@ -1001,18 +1009,16 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
     return true;
 }
 
-int insertToSetList(set_t *set, setList_t *sets)
+
+int insertIntoCommandList(commandList_t *commands, command_t *command)
 {
-    sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+    commands->commands = bigBrainRealloc(commands->commands, ++commands->commandList_len * sizeof(command_t));
+    if (commands->commands == NULL) return false;
 
-    // check for memory error
-    if (sets->sets == NULL)
-    {
-        return errMsg("Allocation failed\n", false);
-    }
+    commands->commands[commands->commandList_len - 1].functionNameIdx = command->functionNameIdx;
+    commands->commands[commands->commandList_len - 1].argc = command->argc;
+    commands->commands[commands->commandList_len - 1].parameters = command->parameters;
 
-    sets->sets[sets->setList_len - 1].set_len = set->set_len;
-    sets->sets[sets->setList_len - 1].items = set->items;
     return true;
 }
 
@@ -1061,6 +1067,17 @@ void freeRelations(relationList_t *relations)
     free(relations->relations);
 }
 
+void freeCommands(commandList_t *commands)
+{
+    if (commands->commandList_len == 0) return;
+
+    for (int i = 0; i < commands->commandList_len; i++)
+    {
+        if (commands->commands[i].argc != 0) free(commands->commands[i].parameters);
+    }
+    free(commands->commands);
+}
+
 /// Print the universe contents to stdout
 /// \param universe the universe to be printed
 void printUniverse(universe_t *universe)
@@ -1099,7 +1116,20 @@ void printRelation(relation_t *relation, universe_t *universe)
     printf("\n");
 }
 
-void printFile(universe_t *universe, relationList_t *relations, setList_t *sets)
+void printCommands(commandList_t *cmds)
+{
+    for (int j = 0; j < cmds->commandList_len; j++)
+    {
+        printf("C %s", functions[cmds->commands[j].functionNameIdx]);
+        for (int i = 0; i < cmds->commands[j].argc; i++)
+        {
+            printf(" %d", cmds->commands[j].parameters[i]);
+        }
+        printf("\n");
+    }
+}
+
+void printFile(universe_t *universe, relationList_t *relations, setList_t *sets, commandList_t *commands)
 {
     printUniverse(universe);
     int i = 0, j = 1;
@@ -1118,242 +1148,13 @@ void printFile(universe_t *universe, relationList_t *relations, setList_t *sets)
     }
     while (i < relations->relationList_len) printRelation(&relations->relations[i++], universe);
     while (j < sets->setList_len) printSet(&sets->sets[j++], universe);
-}
-// returns END_OF_LINE on \n, or false when trying to access negative indexes or the universe
-// or contains other symbols than digits
-// on success returns the index as a long int
-long *readIndex(FILE *file, int count, int *numberOfIndices)
-{
-    char *idx;
-    char *ptr;
-    long *indices = NULL, digit = 0;
-    int order = 0;
-    int status;
-    do
-    {
-        if (!(status = readStringFromFile(file, &idx)))
-        {
-            return NULL;
-        }
 
-        order++;
-
-        indices = bigBrainRealloc(indices, order * sizeof(long));
-        if (indices == NULL)
-        {
-            free(idx);
-            return NULL;
-        }
-        digit = strtol(idx, &ptr, 10);
-        if (digit < 1 || *ptr != '\0')
-        {
-            errMsg("Command taking wrong index", false);
-            free(idx);
-            return NULL;
-        }
-        else if (digit > count)
-        {
-            indices[0] = 0;
-            free(idx);
-            return indices;
-        }
-        else
-            memcpy (&indices[order-1], &digit, sizeof(long));
-
-        free(idx);
-    } while (status != END_OF_LINE);
-    *numberOfIndices = order;
-    return indices;
-}
-
-int callSetFunction(universe_t *universe, setList_t *sets, char *command, long *indices, int numberOfIndices, int funcNumber)
-{
-
-    int status = -1;
-    int indicesUsed = 1;
-    set_t *set1 = NULL;
-    set_t *set2 = NULL;
-    if (numberOfIndices > 0 && indices[0] < sets->setList_len)
-    {
-        set1 = &sets->sets[indices[0]];
-    }
-    else
-    {
-        return -1;
-    }
-
-    switch (funcNumber)
-    {
-        case 0:
-            status = empty(set1);
-            break;
-        case 1:
-            card(set1);
-            break;
-        case 2:
-            complement(universe, set1);
-            break;
-
-        default:
-            if (numberOfIndices > 1 && indices[1] < sets->setList_len)
-            {
-                set2 = &sets->sets[indices[1]];
-            }
-            else
-            {
-                return -1;
-            }
-            indicesUsed = 2;
-            switch (funcNumber)
-            {
-                case 3:
-                    Union(universe, set1, set2);
-                    break;
-                case 4:
-                    intersect(universe, set1, set2);
-                    break;
-                case 5:
-                    minus(universe, set1, set2);
-                    break;
-                case 6:
-                    status = subseteq(set1, set2, true);
-                    break;
-                case 7:
-                    status = subset(set1, set2);
-                    break;
-                case 8:
-                    status = equals(set1, set2);
-                    break;
-                default:
-                    return -1;
-            }
-    }
-
-    if (!(numberOfIndices - indicesUsed))
-        return 0;
-    else if (status == -1)
-    {
-        return -1;
-    }
-    else if (status == 1 && numberOfIndices - indicesUsed == 1)
-    {
-        return 0;
-    }
-    else if (numberOfIndices - indicesUsed == 1)
-    {
-        return 1;
-    }
-    return -1;
-}
-
-int callRelFunction(universe_t *universe, relationList_t *relations, char *command, long *indices, int numberOfIndices, int funcNumber)
-{
-    int status = -1;
-    int indicesUsed = 1;
-    relation_t *rel = NULL;
-    if (numberOfIndices > 2 || !numberOfIndices)
-    {
-        return -1;
-    }
-    else
-    {
-        rel = &relations->relations[indices[0]];
-    }
-
-    switch (funcNumber)
-    {
-        case 9:
-            status = reflexive(universe, rel);
-            break;
-        case 10:
-            status = symmetric(rel);
-            break;
-        case 11:
-            status = antisymmetric(rel);
-            break;
-        case 12:
-            status = transitive(rel);
-            break;
-        case 13:
-            status = function(rel);
-            break;
-        case 14:
-            if (!domain(universe, rel))
-            {
-                return -1;
-            }
-            break;
-        case 15:
-            if (!codomain(universe, rel))
-            {
-                return -1;
-            }
-            break;
-            /* case 16:
-            closure_ref(...);
-            break;
-        case 17:
-            closure_sym(...);
-            break;
-        case 18:
-            closure_trans(...);
-            break; */
-
-        default:
-            break;
-    }
-    if (!(numberOfIndices - indicesUsed))
-        return 0;
-    else if (status == -1)
-    {
-        return -1;
-    }
-    else if (status == 1 && numberOfIndices - indicesUsed == 1)
-    {
-        return 0;
-    }
-    else if (numberOfIndices - indicesUsed == 1)
-    {
-        return 1;
-    }
-    return -1;
-}
-
-int pickAndCallFunction(universe_t *universe, setList_t *sets, relationList_t *relations, char *command, long *indices, int *indexType, int numberOfIndices, int funcNumber)
-{
-    int status = 0;
-    if (funcNumber < SET_FUNCTIONS_LASTINDEX)
-    {
-        for (int i = 0; i < numberOfIndices; i++)
-        {
-            if (indexType[i] < 0)
-            {
-                return -1;
-            }
-        }
-
-        status = callSetFunction(universe, sets, command, indices, numberOfIndices, funcNumber);
-    }
-    else if (funcNumber < REL_FUNCTIONS_LASTINDEX)
-    {
-        if (indexType[0] > 0)
-        {
-
-            return -1;
-        }
-
-        status = callRelFunction(universe, relations, command, indices, numberOfIndices, funcNumber);
-    }
-    /* else if (status = COMBINED_FUNCTIONS_LASTINDEX)
-    {
-        status = callCombinedFunction(...);
-    } */
-    return status;
+    printCommands(commands);
 }
 
 int matchStringToFunc(char *command)
 {
-    for (int i = 0; i < 19; i++)
+    for (int i = 0; i < COMBINED_FUNCTIONS_LASTINDEX; i++)
     {
         if (strcmp(command, functions[i]) == 0)
         {
@@ -1387,76 +1188,137 @@ int findByLineIndex(long index, setList_t *sets, relationList_t *relations, int 
     return 0;
 }
 
-int readCommands(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, int count, bool shouldExecuteCommand, commandList_t *commands)
+int findSet(setList_t *sets, int lineIdx)
 {
+    for (int i = 0; i < sets->setList_len; i++)
+    {
+        if (sets->sets[i].index == lineIdx) return i;
+        else if (sets->sets[i].index > lineIdx) return INVALID_INDEX;
+    }
+    return INVALID_INDEX;
+}
+
+int findRel(relationList_t *relations, int lineIdx)
+{
+    for (int i = 0; i < relations->relationList_len; i++)
+    {
+        if (relations->relations[i].index == lineIdx) return i;
+        else if (relations->relations[i].index > lineIdx) return INVALID_INDEX;
+    }
+    return INVALID_INDEX;
+}
+
+
+int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations)
+{
+    int sadness[] = {1, 1, 1, 2, 2, 2, 3, 3, 3, 2, 2, 2, 2,
+                 2, 1, 1, 1, 1, 1, 3, 3, 3};
+
+    if (cmd->argc != sadness[cmd->functionNameIdx]) return false;
+
+    if (cmd->functionNameIdx >= 0 && cmd->functionNameIdx < SET_FUNCTIONS_LASTINDEX)
+    {
+        for (int j = 0; j < cmd->argc; j++)
+        {
+            if (findSet(sets, cmd->parameters[j]) == INVALID_INDEX)
+            {
+                return false;
+            }
+        }
+    }
+    else if (cmd->functionNameIdx >= SET_FUNCTIONS_LASTINDEX && cmd->functionNameIdx < REL_FUNCTIONS_LASTINDEX)
+    {
+        for (int j = 0; j < cmd->argc; j++)
+        {
+            if (findRel(relations, cmd->parameters[j]) == INVALID_INDEX)
+            {
+                return false;
+            }
+        }
+    }
+    else if (cmd->functionNameIdx >= REL_FUNCTIONS_LASTINDEX)
+    {
+        if (findRel(relations, cmd->parameters[0]) == INVALID_INDEX ||
+            findSet(sets, cmd->parameters[1]) == INVALID_INDEX ||
+            findSet(sets, cmd->parameters[2]) == INVALID_INDEX)
+            return false;
+    }
+    else   return false;
+
+    return true;
+}
+
+int readArgs(FILE *file, command_t *command)
+{
+    char *str, *ptr;
+    int status, argc = 0;
+    do
+    {
+        status = readStringFromFile(file, &str);
+        if (!status) return false;
+
+        if (status == END_OF_LINE && strlen(str) == 0)
+        {
+            free(str);
+            return true;
+        } 
+        
+        int digit = (int)strtol(str, &ptr, 10);
+        free(str);
+        if (strlen(ptr) != 0)
+        {
+            return errMsg("Command taking wrong index\n", false);
+        }
+        
+        command->parameters = bigBrainRealloc(command->parameters, ++command->argc * sizeof(int));
+        if (command->parameters == NULL) return errMsg("Allocation failed.\n", false);
+
+        command->parameters[command->argc - 1] = digit;
+
+    } while (status != END_OF_LINE);
+
+    return true;
+}
+
+int readCommands(FILE *file, commandList_t *commands, relationList_t *relations, setList_t *sets)
+{
+    char c;
+    if (testSpace(file) != DELIM) return false;
+
     char *command;
-    int status;
-    status = readStringFromFile(file, &command);
+    int status = readStringFromFile(file, &command);
     if (!status) return false;
 
-    int numberOfIndices = 0;
-    long *lineIndices = readIndex(file, count, &numberOfIndices);
-    if (!numberOfIndices)
-        return false;
-    long indices[3] = {0};
-    int indexType[3];
-    for (int i = 0; i < numberOfIndices; i++)
-    {
+    int funcIdx = matchStringToFunc(command);
 
-        indices[i] = findByLineIndex(lineIndices[i], sets, relations, &indexType[i]);
-        if (!indexType[i])
-        {
-            free(command);
-            free(lineIndices);
-            return false;
-        }
-    }
-    int funcNumber = matchStringToFunc(command);
-    if (funcNumber == -1)
+    if (status == END_OF_LINE || funcIdx == -1) 
     {
         free(command);
-        free(lineIndices);
+        return errMsg("Invalid arguments passed to command\n", false);
+    }
+
+    command_t cmd = {.functionNameIdx = funcIdx, .argc = 0, .parameters = NULL};
+    free(command);
+    
+    if (readArgs(file, &cmd))
+    {
+        if (!checkArgs(&cmd, sets, relations))
+        {
+            if (cmd.argc > 0) free(cmd.parameters);
+            return errMsg("Invalid arguments passed to function.\n", false);
+        }
+
+        if (!insertIntoCommandList(commands, &cmd))
+        {
+            if (cmd.argc > 0) free(cmd.parameters);
+        }
+    }
+    else
+    {
+        if (cmd.argc > 0) free(cmd.parameters);
         return false;
     }
 
-    if (shouldExecuteCommand)
-    {
-        status = pickAndCallFunction(universe, sets, relations, command, indices, indexType, numberOfIndices, funcNumber);
-        if (status == -1)
-        {
-            return false;
-        }
-
-        /* else if(status == 1)
-    {
-        int line = numberOfIndices - status;
-        jumpToLine(line);
-    } */
-    }
-    else if (!shouldExecuteCommand)
-    {
-        commands->commands = bigBrainRealloc(commands->commands, commands->commandList_len + 1);
-        if (commands->commands == NULL)
-        {
-            free(command);
-            free(lineIndices);
-            return false;
-        }
-        commands->commands[commands->commandList_len].functionName = command;
-        commands->commands[commands->commandList_len].argc = numberOfIndices;
-        memcpy(commands->commands[commands->commandList_len].parameters, indices, 3*sizeof(long));
-        commands->commandList_len++;
-        /*
-        fprintf(stderr, "%s", commands->commands[commands->commandList_len].functionName);
-        fprintf(stderr, "%d", commands->commands[commands->commandList_len].argc);
-        for(int i = 0; i < 3; i++) {
-            fprintf(stderr, "%ld", commands->commands[commands->commandList_len].parameters[i]);
-        }
-         */
-    }
-
-    free(command); // TODO
-    free(lineIndices);
     return true;
 }
 
@@ -1505,27 +1367,61 @@ int transitiveClosure(relation_t *relation, universe_t *universe)
 /// \param relations the relationList to be freed
 /// \param sets the setList to be freed
 /// \param file the file to be closed
-void destructor(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file)
+void destructor(universe_t *universe, relationList_t *relations, setList_t *sets, FILE *file, commandList_t *commands)
 {
     freeUniverse(universe);
     freeRelations(relations);
     freeSets(sets);
+    freeCommands(commands);
     fclose(file);
+}
+
+
+int execute(commandList_t *cmds, int startIdx, setList_t *sets, relationList_t *relations, universe_t *universe)
+{
+    int cmd;
+    for (int i = startIdx; i < cmds->commandList_len; i++)
+    {
+        cmd = cmds->commands[i].functionNameIdx;
+        if (cmd == 0)
+        {
+            empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
+        }
+        else if (cmd == 1)
+        {
+            card(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
+        }
+        else if (cmd == 2)
+        {
+            complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
+        }
+        else if (cmd == 3)
+        {
+            Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
+        }
+        else if (cmd == 4)
+        {
+            intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
+        }
+        else if (cmd == 5)
+        {
+            minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
+        }
+    }
 }
 
 /// Function encapsulating everything that happens with the file
 /// \param file the file to be read
 /// \return 0 if the entire file is successfully read
 /// \return EXIT_FAILURE if an error happens during the file execution
-int readFile(FILE *file)
+int readFile(FILE *file, universe_t *universe, relationList_t *relations, setList_t *sets, commandList_t *commands)
 {
     char c;
     int count = 0, hasU = 0, hasRorS = 0, hasC = 0;
-    universe_t universe = {.universe_len = 0, .items = NULL};
-    relationList_t relations = {.relationList_len = 0, .relations = NULL};
-    setList_t sets = {.setList_len = 0, .sets = NULL};
-    commandList_t commands = {.commandList_len = 0, .commands = NULL};
-
+    
     while (fscanf(file, "%c", &c) != EOF)
     {
         if (++count > MAX_NUM_LINES) return errMsg("The file cannot be more than 1000 lines long.\n", EXIT_FAILURE);
@@ -1534,93 +1430,72 @@ int readFile(FILE *file)
         {
             case 'U':
             {
-                if (appendUniverse(&universe, &sets, file))
-                {
-                    if (++hasU > 1) 
-                    {
-                        destructor(&universe, &relations, &sets, file);
-                        return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-                    }
-                    sets.sets[sets.setList_len - 1].index = count;
+                if (++hasU > 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
+
+                if (appendUniverse(universe, sets, file))
+                { 
+                    sets->sets[sets->setList_len - 1].index = count;
                 }
-                else
-                {
-                    destructor(&universe, &relations, &sets, file);
-                    return EXIT_FAILURE;
-                }
+                else return EXIT_FAILURE;
 
                 break;
             }
             case 'S':
             {
-                if (!hasU || hasC) 
-                {
-                    destructor(&universe, &relations, &sets, file);
-                    return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-                }
+                if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
                 set_t set;
-                if (readSet(&set, file, &universe) && insertToSetList(&set, &sets))
+                if (readSet(&set, file, universe) && insertToSetList(&set, sets))
                 {
                     hasRorS++;
-                    sets.sets[sets.setList_len - 1].index = count;
+                    sets->sets[sets->setList_len - 1].index = count;
                 }
-                else
+                else 
                 {
-                    destructor(&universe, &relations, &sets, file);
+                    free(set.items);
                     return EXIT_FAILURE;
                 }
                 break;
             }
             case 'R':
             {
-                if (!hasU || hasC) 
-                {
-                    destructor(&universe, &relations, &sets, file);
-                    return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-                }
+                if (!hasU || hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
                 relation_t relation;
-                if (readRelation(&relation, file, &universe) && insertToRelatioList(&relation, &relations))
+                if (readRelation(&relation, file, universe) && insertToRelatioList(&relation, relations))
                 {
                     hasRorS++;
-                    relations.relations[relations.relationList_len - 1].index = count;
+                    relations->relations[relations->relationList_len - 1].index = count;
                 }
-                else
+                else 
                 {
-                    destructor(&universe, &relations, &sets, file);
+                    free(relation.items);
                     return EXIT_FAILURE;
                 }
-
                 break;
             }
             case 'C':
             {
                 hasC = 1;
-                if (!hasU || hasRorS < 1)
-                {
-                    destructor(&universe, &relations, &sets, file);
-                    return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-                }
+                if (!hasU || hasRorS < 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
-                if (!readCommands(&universe, &relations, &sets, file, count, true, &commands))
+                if (!readCommands(file, commands, relations, sets))
                 {
-                    destructor(&universe, &relations, &sets, file);
-                    return errMsg("In readCommand.\n", EXIT_FAILURE);
+                    return EXIT_FAILURE;
                 }
                 break;
             }
 
-            default:
+            default: 
             {
-                destructor(&universe, &relations, &sets, file);
                 return errMsg("Invalid file structure.\n", EXIT_FAILURE);
             }
         }
     }
+
     if (!hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-    printFile(&universe, &relations, &sets);
-    destructor(&universe, &relations, &sets, file);
+    printFile(universe, relations, sets, commands);
+    //execute(commands, 0, sets, relations, universe);
     return 0;
 }
 
@@ -1632,12 +1507,18 @@ int readFile(FILE *file)
 int main(int argc, char **argv)
 {
     FILE *f;
+    universe_t universe = {.universe_len = 0, .items = NULL};
+    relationList_t relations = {.relationList_len = 0, .relations = NULL};
+    setList_t sets = {.setList_len = 0, .sets = NULL};
+    commandList_t commands = {.commandList_len = 0, .commands = NULL};
 
     if (argc == 2)
     {
         if ((f = fopen(argv[1], "r")) != NULL)
         {
-            return readFile(f);
+            int status = readFile(f, &universe, &relations, &sets, &commands);
+            destructor(&universe, &relations, &sets, f, &commands);
+            return status;
         }
         else
         {
