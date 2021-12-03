@@ -90,6 +90,7 @@ typedef struct
     int functionNameIdx;
     int *parameters; ///< array of parameters
     int argc;
+    bool exec;
 } command_t;
 
 typedef struct
@@ -763,7 +764,7 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
         if (status == EMPTY_INDEX && insertToSetList(&set, sets)) return true;
 
         set.items = bigBrainRealloc(set.items, sizeof(int) * set.set_len);
-        if (set.items == NULL) return errMsg("Allocation failed\n", false);
+        if (set.items == NULL && set.set_len != 0) return errMsg("Allocation failed\n", false);
 
         for (int i = 0; i < set.set_len; i++)
         {
@@ -1149,7 +1150,117 @@ void printFile(universe_t *universe, relationList_t *relations, setList_t *sets,
     while (i < relations->relationList_len) printRelation(&relations->relations[i++], universe);
     while (j < sets->setList_len) printSet(&sets->sets[j++], universe);
 
-    printCommands(commands);
+    //printCommands(commands);
+}
+
+bool areRelationMembersInSet(relation_t *R, set_t *S, int memberPosition)
+{
+    for (int i = 0; i < R->relation_len; i++)
+    {
+        bool status = false;
+        if (memberPosition == 1)
+        {
+
+            for (int j = 0; j < S->set_len; j++)
+            {
+                if (R->items[i].x == S->items[j])
+                {
+                    status = true;
+                    break;
+                }
+            }
+        }
+        else if (memberPosition == 2)
+        {
+            for (int j = 0; j < S->set_len; j++)
+            {
+                if (R->items[i].y == S->items[j])
+                {
+                    status = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        if (!status)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool injective(relation_t *R, set_t *S1, set_t *S2)
+{
+    if (areRelationMembersInSet(R, S1, 1) && areRelationMembersInSet(R, S2, 2))
+    {
+        return function(R);
+    }
+    else
+    {
+        printf("false\n");
+        return false;
+    }
+}
+
+bool surjective(relation_t *R, set_t *S1, set_t *S2)
+{
+    if (S1->set_len < S2->set_len)
+    {
+        printf("false\n");
+        return false;
+    }
+
+    if (areRelationMembersInSet(R, S1, 1) && areRelationMembersInSet(R, S2, 2))
+    {
+        for (int i = 0; i < S2->set_len; i++)
+        {
+            bool status = false;
+            for (int j = 0; j < R->relation_len; j++)
+            {
+                if (S2->items[i] == R->items[j].y)
+                {
+                    status = true;
+                }
+            }
+            if (!status)
+            {
+                printf("false\n");
+                return false;
+            }
+        }
+        return function(R);
+    }
+    else
+    {
+        printf("false\n");
+        return false;
+    }
+}
+
+bool bijective(relation_t *R, set_t *S1, set_t *S2)
+{
+    if (areRelationMembersInSet(R, S1, 1) && areRelationMembersInSet(R, S2, 2))
+    {
+        if (S1->set_len == S2->set_len)
+        {
+            return function(R);
+        }
+        else
+        {
+            printf("false\n");
+            return false;
+        }
+    }
+    else
+    {
+        printf("false\n");
+        return false;
+    }
 }
 
 int matchStringToFunc(char *command)
@@ -1162,30 +1273,6 @@ int matchStringToFunc(char *command)
         }
     }
     return -1;
-}
-
-int findByLineIndex(long index, setList_t *sets, relationList_t *relations, int *isSet)
-{
-    for (int i = 0; i < sets->setList_len; i++)
-    {
-        if (index == sets->sets[i].index)
-        {
-            *isSet = 1;
-            return i;
-        }
-    }
-
-    for (int i = 0; i < relations->relationList_len; i++)
-    {
-        if (index == relations->relations[i].index)
-        {
-            *isSet = -1;
-            return i;
-        }
-    }
-
-    *isSet = 0;
-    return 0;
 }
 
 int findSet(setList_t *sets, int lineIdx)
@@ -1209,16 +1296,25 @@ int findRel(relationList_t *relations, int lineIdx)
 }
 
 
-int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations)
+int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int *hasBonus)
 {
-    int sadness[] = {1, 1, 1, 2, 2, 2, 3, 3, 3, 2, 2, 2, 2,
-                 2, 1, 1, 1, 1, 1, 3, 3, 3};
+    int arg_count[] = {1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 3, 3, 3};
 
-    if (cmd->argc != sadness[cmd->functionNameIdx]) return false;
-
+    int arg_count_bonus[] = {2, 1, 1, 2, 2, 2, 3, 3, 3, 2, 2, 2, 2,
+                 2, 2, 2, 2, 1, 1, 4, 4, 4};
+    int argc = cmd->argc;
+    
+    if (argc != arg_count[cmd->functionNameIdx])
+    {
+        if (argc != arg_count_bonus[cmd->functionNameIdx]) return false;
+        *hasBonus = 1;
+        argc--;
+    }
+    
     if (cmd->functionNameIdx >= 0 && cmd->functionNameIdx < SET_FUNCTIONS_LASTINDEX)
     {
-        for (int j = 0; j < cmd->argc; j++)
+        for (int j = 0; j < argc; j++)
         {
             if (findSet(sets, cmd->parameters[j]) == INVALID_INDEX)
             {
@@ -1228,7 +1324,7 @@ int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations)
     }
     else if (cmd->functionNameIdx >= SET_FUNCTIONS_LASTINDEX && cmd->functionNameIdx < REL_FUNCTIONS_LASTINDEX)
     {
-        for (int j = 0; j < cmd->argc; j++)
+        for (int j = 0; j < argc; j++)
         {
             if (findRel(relations, cmd->parameters[j]) == INVALID_INDEX)
             {
@@ -1262,25 +1358,25 @@ int readArgs(FILE *file, command_t *command)
             free(str);
             return true;
         } 
-        
-        int digit = (int)strtol(str, &ptr, 10);
+    
+        long digit = strtol(str, &ptr, 10);
         free(str);
-        if (strlen(ptr) != 0)
+        /*if (ptr[0] != '\0')
         {
             return errMsg("Command taking wrong index\n", false);
-        }
+        }*/
         
         command->parameters = bigBrainRealloc(command->parameters, ++command->argc * sizeof(int));
         if (command->parameters == NULL) return errMsg("Allocation failed.\n", false);
 
-        command->parameters[command->argc - 1] = digit;
+        command->parameters[command->argc - 1] = (int) digit;
 
     } while (status != END_OF_LINE);
 
     return true;
 }
 
-int readCommands(FILE *file, commandList_t *commands, relationList_t *relations, setList_t *sets)
+int readCommands(FILE *file, commandList_t *commands, relationList_t *relations, setList_t *sets, int *bonus)
 {
     char c;
     if (testSpace(file) != DELIM) return false;
@@ -1297,12 +1393,12 @@ int readCommands(FILE *file, commandList_t *commands, relationList_t *relations,
         return errMsg("Invalid arguments passed to command\n", false);
     }
 
-    command_t cmd = {.functionNameIdx = funcIdx, .argc = 0, .parameters = NULL};
+    command_t cmd = {.functionNameIdx = funcIdx, .argc = 0, .parameters = NULL, .exec = false};
     free(command);
     
     if (readArgs(file, &cmd))
     {
-        if (!checkArgs(&cmd, sets, relations))
+        if (!checkArgs(&cmd, sets, relations, bonus))
         {
             if (cmd.argc > 0) free(cmd.parameters);
             return errMsg("Invalid arguments passed to function.\n", false);
@@ -1376,40 +1472,96 @@ void destructor(universe_t *universe, relationList_t *relations, setList_t *sets
     fclose(file);
 }
 
-
-int execute(commandList_t *cmds, int startIdx, setList_t *sets, relationList_t *relations, universe_t *universe)
+int symmetricClosure(universe_t *universe, relation_t *relation)
 {
-    int cmd;
-    for (int i = startIdx; i < cmds->commandList_len; i++)
+
+}
+
+int reflexiveClosure(universe_t *universe, relation_t *relation)
+{
+    
+}
+
+int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, universe_t *universe, int hasBonus, int initSize)
+{
+    int cmd, fileSize = initSize + cmds->commandList_len;
+    for (int i = 0; i < cmds->commandList_len; i++)
     {
         cmd = cmds->commands[i].functionNameIdx;
-        if (cmd == 0)
+        switch (cmd)
         {
-            empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
+            case 0: 
+            {
+                if (!empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]))
+                {
+                    i = cmds->commands[i].parameters[1] - initSize - 3;
+                }
+                break;
+            }
+            case 1: 
+            {
+                card(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]); 
+                break;
+            }
+            case 2: 
+            {
+                complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])]); 
+                break;
+            }
+            case 3: 
+            {
+                Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                break;
+            }
+            case 4: 
+            {
+                intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                break;
+            }
+            case 5:
+            {
+                minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                break;
+            } 
+            case 6: 
+            {
+                subseteq(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], 1); 
+                break;
+            }
+            case 7: 
+            {
+                subset(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                break;
+            }
+            case 8: equals(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); break;
+            case 9: reflexive(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 10: symmetric(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 11: antisymmetric(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 12: transitive(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 13: function(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 14: domain(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 15: codomain(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 16: reflexiveClosure(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 17: symmetricClosure(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
+            case 18: transitiveClosure(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe); break;
+            case 19: injective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
+                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
+                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
+            case 20: surjective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
+                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
+                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
+            case 21: bijective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
+                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
+                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
+
         }
-        else if (cmd == 1)
-        {
-            card(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
-        }
-        else if (cmd == 2)
-        {
-            complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
-        }
-        else if (cmd == 3)
-        {
-            Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
-        }
-        else if (cmd == 4)
-        {
-            intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
-        }
-        else if (cmd == 5)
-        {
-            minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
-        }
+    
     }
 }
 
@@ -1420,7 +1572,7 @@ int execute(commandList_t *cmds, int startIdx, setList_t *sets, relationList_t *
 int readFile(FILE *file, universe_t *universe, relationList_t *relations, setList_t *sets, commandList_t *commands)
 {
     char c;
-    int count = 0, hasU = 0, hasRorS = 0, hasC = 0;
+    int count = 0, hasU = 0, hasRorS = 0, hasC = 0, hasBonus = 0;
     
     while (fscanf(file, "%c", &c) != EOF)
     {
@@ -1479,7 +1631,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
                 hasC = 1;
                 if (!hasU || hasRorS < 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
-                if (!readCommands(file, commands, relations, sets))
+                if (!readCommands(file, commands, relations, sets, &hasBonus))
                 {
                     return EXIT_FAILURE;
                 }
@@ -1495,7 +1647,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
 
     if (!hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
     printFile(universe, relations, sets, commands);
-    //execute(commands, 0, sets, relations, universe);
+    execute(commands, sets, relations, universe, hasBonus, hasRorS);
     return 0;
 }
 
