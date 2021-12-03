@@ -1492,7 +1492,7 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
         {
             case 0: 
             {
-                if (!empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]))
+                if (!empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]) && hasBonus)
                 {
                     i = cmds->commands[i].parameters[1] - initSize - 3;
                 }
