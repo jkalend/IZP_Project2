@@ -625,11 +625,11 @@ int readStringFromFile(FILE *file, char **string)
         if (c == '\n') return END_OF_LINE;
         else if (c == DELIM && strLen != 0) return true;
 
-        // the start condition is met and all whitespace is gone -> start adding characters to the string
+            // the start condition is met and all whitespace is gone -> start adding characters to the string
         else if (c != DELIM)
         {
             // check if the maximum length wasn't reached
-            if (++strLen > MAX_STR_LEN) 
+            if (++strLen > MAX_STR_LEN)
             {
                 free(*string);
                 return errMsg("Items cannot be more than 30 characters long.\n", false);
@@ -637,7 +637,7 @@ int readStringFromFile(FILE *file, char **string)
 
             (*string)[strLen - 1] = c;
             (*string)[strLen] = '\0';
-            
+
         }
     }
     return END_OF_LINE;
@@ -701,7 +701,7 @@ int readUniverse(universe_t *universe, FILE *file)
 
         // an error occurred while reading the file
         if (!status) return false;
-    
+
         // get rid of trailing whitespace
         if (status == END_OF_LINE && strlen(str) == 0)
         {
@@ -748,7 +748,7 @@ int insertToSetList(set_t *set, setList_t *sets)
 
 
 /// Read universe and append it in set structure to the setList, so it can be used in the same way as a regular set
-/// \param universe the universe 
+/// \param universe the universe
 /// \param sets structure containing all sets in the file
 /// \param file file to be read from
 /// \return true when no error occurs during reading, false otherwise
@@ -772,7 +772,7 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
         }
 
         if (insertToSetList(&set, sets)) return true;
-        else 
+        else
         {
             free(set.items);
             return false;
@@ -829,7 +829,7 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
 
     int statusX = readStringFromFile(file, &strX);
     if (!statusX) return false;
-   
+
     // trailing whitespace has been read
     if (statusX == END_OF_LINE && strlen(strX) == 0)
     {
@@ -839,7 +839,7 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
 
     int statusY = readStringFromFile(file, &strY);
     if (!statusY) return false;
-    
+
     // check if the pair is in valid format
     if (strX[0] != '(' || strY[strlen(strY) - 1] != ')')
     {
@@ -897,7 +897,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
         else if (status == EMPTY_INDEX)
         {
             relation->items = bigBrainRealloc(relation->items, --relation->relation_len * sizeof(relationUnit_t));
-            if (relation->items == NULL && relation->relation_len != 0) 
+            if (relation->items == NULL && relation->relation_len != 0)
             {
                 return errMsg("Allocation failed.\n", false);
             }
@@ -943,7 +943,7 @@ int readSetItem(int *idx, FILE *file, universe_t *universe)
     char *str;
     int status = readStringFromFile(file, &str);
     if (!status) return false;
- 
+
     // trailing whitespace has been read
     if (strlen(str) == 0 && status == END_OF_LINE)
     {
@@ -987,7 +987,7 @@ int readSet(set_t *set, FILE *file, universe_t *universe)
         status = readSetItem(&set->items[set->set_len - 1], file, universe);
         if (!status) return false;
 
-        // trailing whitespace has been read
+            // trailing whitespace has been read
         else if (status == EMPTY_INDEX)
         {
             set->items = bigBrainRealloc(set->items, --set->set_len * sizeof(int));
@@ -1141,7 +1141,7 @@ void printFile(universe_t *universe, relationList_t *relations, setList_t *sets,
             printRelation(&relations->relations[i], universe);
             i++;
         }
-        else 
+        else
         {
             printSet(&sets->sets[j], universe);
             j++;
@@ -1299,19 +1299,19 @@ int findRel(relationList_t *relations, int lineIdx)
 int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int *hasBonus)
 {
     int arg_count[] = {1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1,
-                 1, 1, 1, 1, 1, 1, 3, 3, 3};
+                       1, 1, 1, 1, 1, 1, 3, 3, 3};
 
     int arg_count_bonus[] = {2, 1, 1, 2, 2, 2, 3, 3, 3, 2, 2, 2, 2,
-                 2, 2, 2, 2, 1, 1, 4, 4, 4};
+                             2, 2, 2, 2, 1, 1, 4, 4, 4};
     int argc = cmd->argc;
-    
+
     if (argc != arg_count[cmd->functionNameIdx])
     {
         if (argc != arg_count_bonus[cmd->functionNameIdx]) return false;
         *hasBonus = 1;
         argc--;
     }
-    
+
     if (cmd->functionNameIdx >= 0 && cmd->functionNameIdx < SET_FUNCTIONS_LASTINDEX)
     {
         for (int j = 0; j < argc; j++)
@@ -1357,15 +1357,15 @@ int readArgs(FILE *file, command_t *command)
         {
             free(str);
             return true;
-        } 
-    
+        }
+
         long digit = strtol(str, &ptr, 10);
         free(str);
         /*if (ptr[0] != '\0')
         {
             return errMsg("Command taking wrong index\n", false);
         }*/
-        
+
         command->parameters = bigBrainRealloc(command->parameters, ++command->argc * sizeof(int));
         if (command->parameters == NULL) return errMsg("Allocation failed.\n", false);
 
@@ -1387,7 +1387,7 @@ int readCommands(FILE *file, commandList_t *commands, relationList_t *relations,
 
     int funcIdx = matchStringToFunc(command);
 
-    if (status == END_OF_LINE || funcIdx == -1) 
+    if (status == END_OF_LINE || funcIdx == -1)
     {
         free(command);
         return errMsg("Invalid arguments passed to command\n", false);
@@ -1395,7 +1395,7 @@ int readCommands(FILE *file, commandList_t *commands, relationList_t *relations,
 
     command_t cmd = {.functionNameIdx = funcIdx, .argc = 0, .parameters = NULL, .exec = false};
     free(command);
-    
+
     if (readArgs(file, &cmd))
     {
         if (!checkArgs(&cmd, sets, relations, bonus))
@@ -1479,7 +1479,7 @@ int symmetricClosure(universe_t *universe, relation_t *relation)
 
 int reflexiveClosure(universe_t *universe, relation_t *relation)
 {
-    
+
 }
 
 int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, universe_t *universe, int hasBonus, int initSize)
@@ -1490,56 +1490,73 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
         cmd = cmds->commands[i].functionNameIdx;
         switch (cmd)
         {
-            case 0: 
+            case 0:
             {
-                if (!empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]) && hasBonus)
+                if (!empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]))
                 {
-                    i = cmds->commands[i].parameters[1] - initSize - 3;
+                    if (cmds->commands[i].argc == 2 && hasBonus)
+                        i = cmds->commands[i].parameters[1] - cmds->commandList_len - 1;
                 }
                 break;
             }
-            case 1: 
+            case 1:
             {
-                card(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]); 
+                card(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
                 break;
             }
-            case 2: 
+            case 2:
             {
-                complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])]); 
+                complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
                 break;
             }
-            case 3: 
+            case 3:
             {
-                Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
+                      &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
                 break;
             }
-            case 4: 
+            case 4:
             {
-                intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
+                          &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
                 break;
             }
             case 5:
             {
-                minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
-                break;
-            } 
-            case 6: 
-            {
-                subseteq(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], 1); 
+                minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
+                      &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
                 break;
             }
-            case 7: 
+            case 6:
             {
-                subset(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); 
+                if(!subseteq(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
+                         &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], 1))
+                {
+                    if (cmds->commands[i].argc == 3 && hasBonus)
+                        i = cmds->commands[i].parameters[2] - cmds->commandList_len - 1;
+                }
                 break;
             }
-            case 8: equals(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                            &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]); break;
+            case 7:
+            {
+                if(!subset(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
+                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]))
+                {
+                    if (cmds->commands[i].argc == 3 && hasBonus)
+                        i = cmds->commands[i].parameters[2] - cmds->commandList_len - 1;
+                }
+                break;
+            }
+            case 8:
+            {
+                if(!equals(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
+                           &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]))
+                {
+                    if (cmds->commands[i].argc == 3 && hasBonus)
+                        i = cmds->commands[i].parameters[2] - cmds->commandList_len - 1;
+                }
+                break;
+            }
             case 9: reflexive(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
             case 10: symmetric(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
             case 11: antisymmetric(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
@@ -1551,17 +1568,17 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
             case 17: symmetricClosure(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
             case 18: transitiveClosure(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe); break;
             case 19: injective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
-                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
-                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
+                               &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
+                               &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
             case 20: surjective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
-                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
-                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
+                                &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
+                                &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
             case 21: bijective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
-                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
-                                       &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
+                               &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
+                               &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
 
         }
-    
+
     }
 }
 
@@ -1573,7 +1590,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
 {
     char c;
     int count = 0, hasU = 0, hasRorS = 0, hasC = 0, hasBonus = 0;
-    
+
     while (fscanf(file, "%c", &c) != EOF)
     {
         if (++count > MAX_NUM_LINES) return errMsg("The file cannot be more than 1000 lines long.\n", EXIT_FAILURE);
@@ -1585,7 +1602,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
                 if (++hasU > 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
                 if (appendUniverse(universe, sets, file))
-                { 
+                {
                     sets->sets[sets->setList_len - 1].index = count;
                 }
                 else return EXIT_FAILURE;
@@ -1602,7 +1619,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
                     hasRorS++;
                     sets->sets[sets->setList_len - 1].index = count;
                 }
-                else 
+                else
                 {
                     free(set.items);
                     return EXIT_FAILURE;
@@ -1619,7 +1636,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
                     hasRorS++;
                     relations->relations[relations->relationList_len - 1].index = count;
                 }
-                else 
+                else
                 {
                     free(relation.items);
                     return EXIT_FAILURE;
@@ -1638,7 +1655,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
                 break;
             }
 
-            default: 
+            default:
             {
                 return errMsg("Invalid file structure.\n", EXIT_FAILURE);
             }
