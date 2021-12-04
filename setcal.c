@@ -600,11 +600,16 @@ bool function(relation_t *R)
 
 bool domain(universe_t *uni, relation_t *R, set_t *dest)
 {
-    dest->items = malloc(R->relation_len * sizeof(int));
+    dest->items = NULL;
+    dest->set_len = R->relation_len;
+    if (R->relation_len != 0)
+    {
+        dest->items = malloc(R->relation_len * sizeof(int));
+        if (dest->items == NULL)
+            return false;
+    }
     int domainCount = 0;
-    if (dest->items == NULL)
-        return false;
-
+    
     printf("S");
     for (int i = 0; i < R->relation_len; i++)
     {
@@ -631,10 +636,15 @@ bool domain(universe_t *uni, relation_t *R, set_t *dest)
 
 bool codomain(universe_t *uni, relation_t *R, set_t *dest)
 {
-    dest->items = malloc(R->relation_len * sizeof(int));
+    dest->items = NULL;
+    dest->set_len = R->relation_len;
+    if (R->relation_len != 0)
+    {
+        dest->items = malloc(R->relation_len * sizeof(int));
+        if (dest->items == NULL)
+            return false;
+    }
     int domainCount = 0;
-    if (dest->items == NULL)
-        return false;
     printf("S");
     for (int i = 0; i < R->relation_len; i++)
     {
