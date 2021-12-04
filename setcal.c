@@ -176,18 +176,18 @@ void card(set_t *A)
 /// \param universe the universe over which the set is defined
 /// \param A set of which we want the complement
 /// \return false on failure of an allocation, true on success
-int complement(universe_t *universe, setList_t *sets, set_t *A, int index)
+int complement(universe_t *universe, set_t *A, set_t *dest)
 {
-    int *wholeSet = NULL;
+    //int *wholeSet = NULL;
     /*
     if (universe->universe_len)
         wholeSet = bigBrainRealloc(wholeSet, sizeof(int));
     else if (!universe->universe_len)
         wholeSet = bigBrainRealloc(wholeSet, sizeof(int));
     */
-
-    printf("S ");
-    int size = 0;
+    dest->items = NULL;
+    dest->set_len = 0;
+    //int size = 0;
     for (int i = 0; i < universe->universe_len; i++) // U a b c //S a b
     {
         int o = 0;
@@ -197,25 +197,26 @@ int complement(universe_t *universe, setList_t *sets, set_t *A, int index)
         }
         if (o == A->set_len)
         {
-            size++;
-            wholeSet = bigBrainRealloc(wholeSet, size *sizeof(int));
-            if (wholeSet == NULL)
+            dest->set_len++;
+            dest->items = bigBrainRealloc(dest->items, dest->set_len *sizeof(int));
+            if (dest->items == NULL)
                 return errMsg("Allocation failed\n", false);
-            wholeSet[size-1] = i;
+            dest->items[dest->set_len - 1] = i;
         }
     }
-    for (int o = 0; o < size; o++)
+    printf("S ");
+    for (int o = 0; o < dest->set_len; o++)
     {
-        printf("%s ", universe->items[wholeSet[o]]);
+        printf("%s ", universe->items[dest->items[o]]);
     }
     printf("\n");
-    set_t set = {.set_len = size, .items = NULL, .index = index};
+    /*set_t set = {.set_len = size, .items = NULL, .index = index};
     set.items = bigBrainRealloc(set.items, size*sizeof(int));
     if(set.items == NULL && size > 0) return errMsg("Allocation failed\n", false);
 
-    memcpy(set.items, wholeSet, size*sizeof(int));
+    memcpy(set.items, dest->items, size*sizeof(int));
     insertToSetList(&set, sets);
-    free(wholeSet);
+    free(wholeSet);*/
     return true;
 }
 
@@ -224,28 +225,25 @@ int complement(universe_t *universe, setList_t *sets, set_t *A, int index)
 /// \param A the first set to be put in the union
 /// \param B the second set to be put in the union
 /// \return false on failure of an allocation, true on success
-int Union(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
+int Union(universe_t *universe, set_t *A, set_t *B, set_t *dest)
 {
+    dest->items = NULL;
     int len;
     set_t *bigger;
     set_t *smaller;
     if (A->set_len > B->set_len) bigger = A, smaller = B;
     else bigger = B, smaller = A;
-
-    int *uni = NULL;
-    if (bigger->set_len)
-        uni = bigBrainRealloc(uni, bigger->set_len * sizeof(int));
-    else if (!bigger->set_len)
-        uni = bigBrainRealloc(uni, sizeof(int));
-    if (uni == NULL)
-        return errMsg("Allocation failed\n", false);
-
+    
+    if (bigger->set_len != 0)
+    {
+        dest->items = bigBrainRealloc(dest->items, bigger->set_len * sizeof(int));
+        if (dest->items == NULL)
+            return errMsg("Allocation failed\n", false);
+        memcpy(dest->items, bigger->items, bigger->set_len * sizeof(int));
+    }
     len = bigger->set_len;
 
-    memcpy(uni, bigger->items, bigger->set_len * sizeof(int));
-
     int j;
-
     for (int i = 0; i < bigger->set_len; i++)
     {
         for (j = 0; j < smaller->set_len; j++)
@@ -261,7 +259,7 @@ int Union(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
             int o = 0;
             for (; o < len; o++)
             {
-                if (uni[o] == smaller->items[j-1])
+                if (dest->items[o] == smaller->items[j-1])
                 {
                     o = -1;
                     break;
@@ -269,27 +267,20 @@ int Union(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
             }
             if (o == -1) break;
             len++;
-            uni = bigBrainRealloc(uni, len * sizeof(int));
-            if (uni == NULL && len > 0)
+            dest->items = bigBrainRealloc(dest->items, len * sizeof(int));
+            if (dest->items == NULL && len > 0)
                 return errMsg("Allocation failed\n", false);
 
-            memcpy(&uni[len - 1], &smaller->items[j-1], sizeof(int));
+            memcpy(&dest->items[len - 1], &smaller->items[j-1], sizeof(int));
         }
     }
-
+    dest->set_len = len;
     printf("S");
     for (int i = 0; i < len; i++)
     {
-        printf(" %s", universe->items[uni[i]]);
+        printf(" %s", universe->items[dest->items[i]]);
     }
-    set_t set = {.set_len = len, .items = NULL, .index = index};
-    set.items = bigBrainRealloc(set.items, len*sizeof(int)); //FIXME when size is 0 -> leak of 0 bytes
-    if(set.items == NULL && len > 0) return errMsg("Allocation failed\n", false);
-
-    memcpy(set.items, uni, len*sizeof(int));
-    insertToSetList(&set, sets);
     printf("\n");
-    free(uni);
     return true;
 }
 
@@ -297,11 +288,11 @@ int Union(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
 /// \param universe the universe over which the sets are defined
 /// \param A the first set in the intersection
 /// \param B the second set in the intersection
-int intersect(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
+int intersect(universe_t *universe, set_t *A, set_t *B, set_t *dest)
 {
-    int *array = NULL;
-    int size = 0;
-
+    dest->items = NULL;
+    dest->set_len = 0;
+   
     printf("S");
     for (int i = 0; i < A->set_len; i++)
     {
@@ -310,22 +301,15 @@ int intersect(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int ind
             if (A->items[i] == B->items[j])
             {
                 printf(" %s", universe->items[A->items[i]]);
-                array = bigBrainRealloc(array, ++size*sizeof(int));
-                if(array == NULL && size > 0) return errMsg("Allocation failed\n", false);
+                dest->items = bigBrainRealloc(dest->items, ++dest->set_len * sizeof(int));
+                if (dest->items == NULL && dest->set_len > 0) return errMsg("Allocation failed\n", false);
 
-                array[size-1] = A->items[i];
+                dest->items[dest->set_len - 1] = A->items[i];
                 break;
             }
         }
     }
-    set_t set = {.set_len = size, .items = NULL, .index = index};
-    set.items = bigBrainRealloc(set.items, size*sizeof(int));
-    if(set.items == NULL && size > 0) return errMsg("Allocation failed\n", false);
-
-    memcpy(set.items, array, size*sizeof(int));
-    insertToSetList(&set, sets);
     printf("\n");
-    free(array);
     return true;
 }
 
@@ -334,10 +318,10 @@ int intersect(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int ind
 /// \param A the set from which elements are subtracted
 /// \param B the set containing the subtracted elements
 /// \return false on failure of an allocation, true on success
-int minus(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
+int minus(universe_t *universe, set_t *A, set_t *B, set_t *dest)
 {
-    int *min = NULL;
-    int size = 0;
+    dest->items = NULL;
+    dest->set_len = 0;
 
     printf("S");
     for (int i = 0; i < A->set_len; i++)
@@ -354,22 +338,14 @@ int minus(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
         if (status != EMPTY_INDEX)
         {
             printf(" %s", universe->items[A->items[i]]);
-            min = bigBrainRealloc(min, ++size*sizeof(int));
-            if (min == NULL && size > 0)
+            dest->items = bigBrainRealloc(dest->items, ++dest->set_len * sizeof(int));
+            if (dest->items == NULL && dest->set_len > 0)
                 return errMsg("Allocation failed\n", false);
 
-            min[size-1] = A->items[i];
+            dest->items[dest->set_len - 1] = A->items[i];
         }
     }
-    set_t set = {.set_len = size, .items = NULL, .index = index};
-    set.items = bigBrainRealloc(set.items,size*sizeof(int));
-    if(set.items == NULL && size > 0) return errMsg("Allocation failed\n", false);
-
-    memcpy(set.items, min, size*sizeof(int));
-    insertToSetList(&set, sets);
-
     printf("\n");
-    free(min);
     return true;
 }
 
@@ -528,7 +504,6 @@ bool antisymmetric(relation_t *R)
 
 bool transitive(relation_t *R)
 {
-
     for (int i = 0; i < R->relation_len; i++)
     {
         for (int j = 0; j < R->relation_len; j++)
@@ -552,30 +527,6 @@ bool transitive(relation_t *R)
             }
         }
     }
-
-    /* for (int i = 0; i < R->relation_len; i++)
-    {
-        for (int j = 0; j < R->relation_len; j++)
-        {
-            if (R->items[i].y == R->items[j].x)
-            {
-                bool hasTransitiveUnit = false;
-                for (int k = 0; k < R->relation_len; k++)
-                {
-                    if (R->items[i].x == R->items[k].x == 0 && R->items[j].y == R->items[k].y)
-                    {
-                        hasTransitiveUnit = true;
-                        break;
-                    }
-                }
-                if (!hasTransitiveUnit)
-                {
-                    printf("\nfalse");
-                    return false;
-                }
-            }
-        }
-    } */
     printf("true\n");
     return true;
 }
@@ -630,7 +581,6 @@ bool domain(universe_t *uni, relation_t *R, set_t *dest)
         }
     }
     printf("\n");
-    //free(domain);
     return true;
 }
 
@@ -665,7 +615,6 @@ bool codomain(universe_t *uni, relation_t *R, set_t *dest)
         }
     }
     printf("\n");
-    //free(domain);
     return true;
 }
 
@@ -891,8 +840,11 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
     }
 
     int statusY = readStringFromFile(file, &strY);
-    if (!statusY) return false;
-
+    if (!statusY) 
+    {
+        free(strX);
+        return false;
+    }
     // check if the pair is in valid format
     if (strX[0] != '(' || strY[strlen(strY) - 1] != ')')
     {
@@ -1072,7 +1024,7 @@ int insertIntoCommandList(commandList_t *commands, command_t *command)
     commands->commands[commands->commandList_len - 1].functionNameIdx = command->functionNameIdx;
     commands->commands[commands->commandList_len - 1].argc = command->argc;
     commands->commands[commands->commandList_len - 1].parameters = command->parameters;
-
+    commands->commands[commands->commandList_len - 1].exec = false;
     return true;
 }
 
@@ -1183,7 +1135,7 @@ void printCommands(commandList_t *cmds)
     }
 }
 
-void printFile(universe_t *universe, relationList_t *relations, setList_t *sets, commandList_t *commands)
+void printFile(universe_t *universe, relationList_t *relations, setList_t *sets)
 {
     printUniverse(universe);
     int i = 0, j = 1;
@@ -1202,8 +1154,6 @@ void printFile(universe_t *universe, relationList_t *relations, setList_t *sets,
     }
     while (i < relations->relationList_len) printRelation(&relations->relations[i++], universe);
     while (j < sets->setList_len) printSet(&sets->sets[j++], universe);
-
-    //printCommands(commands);
 }
 
 bool areRelationMembersInSet(relation_t *R, set_t *S, int memberPosition)
@@ -1404,7 +1354,7 @@ int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int fi
 int readArgs(FILE *file, command_t *command)
 {
     char *str, *ptr;
-    int status, argc = 0;
+    int status;
     do
     {
         status = readStringFromFile(file, &str);
@@ -1432,9 +1382,8 @@ int readArgs(FILE *file, command_t *command)
     return true;
 }
 
-int readCommands(FILE *file, commandList_t *commands, relationList_t *relations, setList_t *sets, int *bonus)
+int readCommands(FILE *file, commandList_t *commands)
 {
-    char c;
     if (testSpace(file) != DELIM) return false;
 
     char *command;
@@ -1457,9 +1406,11 @@ int readCommands(FILE *file, commandList_t *commands, relationList_t *relations,
         return true;
     }
     else if (cmd.argc > 0) free(cmd.parameters);
+
+    return true;
 }
 //TODO
-int closure_ref(relation_t *relation, universe_t *universe)
+int closure_ref(relation_t *relation, universe_t *universe, relation_t *dest)
 {
     relation_t tmp = {.items = NULL, .relation_len = relation->relation_len};
     if (relation->relation_len != 0)
@@ -1470,40 +1421,27 @@ int closure_ref(relation_t *relation, universe_t *universe)
     
         memcpy (tmp.items, relation->items, sizeof(relationUnit_t) * relation->relation_len);
     }
-    for (int i = 0; i < relation->relation_len; i++)
+    for (int i = 0; i < universe->universe_len; i++)
     {
-        if (tmp.items[i].x != tmp.items[i].y)
+        relationUnit_t unit = {.x = i, .y = i};
+        if (containsRelationUnit(relation, &unit) < 0)
         {
-            relationUnit_t unitX = {.x = tmp.items[i].x, .y = tmp.items[i].x};
-            if (!containsRelationUnit(&tmp, &unitX))
+            tmp.items = bigBrainRealloc(tmp.items, ++tmp.relation_len * sizeof(relationUnit_t));
+            if (tmp.items == NULL)
             {
-                tmp.items = bigBrainRealloc(tmp.items, ++tmp.relation_len * sizeof(relationUnit_t));
-                if (tmp.items == NULL)
-                {
-                    return errMsg("Allocation failed.\n", false);
-                }
-                tmp.items[tmp.relation_len - 1].x = unitX.x;
-                tmp.items[tmp.relation_len - 1].y = unitX.x;
+                return errMsg("Allocation failed.\n", false);
             }
-            relationUnit_t unitY = {.x = tmp.items[i].y, .y = tmp.items[i].y};
-            if (containsRelationUnit(&tmp, &unitY) < 0)
-            {
-                tmp.items = bigBrainRealloc(tmp.items, ++tmp.relation_len * sizeof(relationUnit_t));
-                if (tmp.items == NULL)
-                {
-                    return errMsg("Allocation failed.\n", false);
-                }
-                tmp.items[tmp.relation_len - 1].x = unitY.y;
-                tmp.items[tmp.relation_len - 1].y = unitY.y;
-            }
+            tmp.items[tmp.relation_len - 1].x = unit.x;
+            tmp.items[tmp.relation_len - 1].y = unit.y;
         }
     }
     printRelation(&tmp, universe);
-    free(tmp.items);
+    dest->items = tmp.items;
+    dest->relation_len = tmp.relation_len;
     return true;
 }
 
-int closure_sym(relation_t *relation, universe_t *universe)
+int closure_sym(relation_t *relation, universe_t *universe, relation_t *dest)
 {
     relation_t tmp = {.items = NULL, .relation_len = relation->relation_len};
     if (relation->relation_len != 0)
@@ -1532,7 +1470,8 @@ int closure_sym(relation_t *relation, universe_t *universe)
         }
     }
     printRelation(&tmp, universe);
-    free(tmp.items);
+    dest->relation_len = tmp.relation_len;
+    dest->items = tmp.items;
     return true;
 }
 
@@ -1613,11 +1552,13 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
     int cmd, fileSize = initSize + cmds->commandList_len + 1;
     for (int i = 0; i < cmds->commandList_len; i++)
     {
-        
+        if (cmds->commands[i].exec) continue;
+
         if (!checkArgs(&cmds->commands[i], sets, relations, fileSize)) 
         {
             return errMsg("Invalid arguments passed to function.\n", false);
         }
+
         cmd = cmds->commands[i].functionNameIdx;
         switch (cmd)
         {
@@ -1637,29 +1578,53 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
         }
         case 2:
         {
-            complement(universe, sets, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], initSize + i + 2);
-            cmds->commands[i].exec = true;
+            set_t set;
+            if (complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], &set))
+            {
+                if (insertToSetList(&set, sets))
+                    sets->sets[sets->setList_len - 1].index = initSize + i + 2;
+                else return false;
+            }
+            else return false;
             break;
         }
         case 3:
         {
-            Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                    &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], sets, initSize + i + 2);
-            cmds->commands[i].exec = true;
+            set_t set;
+            if (Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                    &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], &set))
+            {
+                if (insertToSetList(&set, sets))
+                    sets->sets[sets->setList_len - 1].index = initSize + i + 2;
+                else return false;
+            }
+            else return false;
             break;
         }
         case 4:
         {
-            intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                        &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], sets, initSize + i + 2);
-            cmds->commands[i].exec = true;
+            set_t set;
+            if (intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                        &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], &set))
+            {
+                if (insertToSetList(&set, sets))
+                    sets->sets[sets->setList_len - 1].index = initSize + i + 2;
+                else return false;
+            }
+            else return false;
             break;
         }
         case 5:
         {
-            minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
-                    &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], sets, initSize + i + 2);
-            cmds->commands[i].exec = true;
+            set_t set;
+            if (minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])], 
+                    &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], &set))
+            {
+                if (insertToSetList(&set, sets)) 
+                    sets->sets[sets->setList_len - 1].index = initSize + i + 2;
+                else return false;
+            }
+            else return false;
             break;
         }
         case 6:
@@ -1752,11 +1717,33 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
             break;
         } 
         case 16:
-            closure_ref(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe);
+        {
+            relation_t rel;
+            if (closure_ref(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe, &rel))
+            {
+                if (insertToRelatioList(&rel, relations))
+                {
+                    relations->relations[relations->relationList_len - 1].index = initSize + i + 2;
+                }
+                else return false;
+            }
+            else return false;
             break;
+        }
         case 17:
-            closure_sym(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe);
+        {
+            relation_t rel;
+            if (closure_sym(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe, &rel))
+            {
+                if (insertToRelatioList(&rel, relations))
+                {
+                    relations->relations[relations->relationList_len - 1].index = initSize + i + 2;
+                }
+                else return false;
+            }
+            else return false;
             break;
+        }
         case 18:
         {
             relation_t rel;
@@ -1814,7 +1801,9 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
         }
         default: return false;
         }
+        cmds->commands[i].exec = true;
     }
+    return true;
 }
 
 /// Function encapsulating everything that happens with the file
@@ -1883,7 +1872,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
                 hasC = 1;
                 if (!hasU || hasRorS < 1) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
 
-                if (!readCommands(file, commands, relations, sets, &hasBonus))
+                if (!readCommands(file, commands))
                 {
                     return EXIT_FAILURE;
                 }
@@ -1898,7 +1887,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
     }
 
     if (!hasC) return errMsg("Invalid file structure.\n", EXIT_FAILURE);
-    printFile(universe, relations, sets, commands);
+    printFile(universe, relations, sets);
     return !execute(commands, sets, relations, universe, hasBonus, hasRorS);
 }
 
