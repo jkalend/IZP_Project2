@@ -90,6 +90,7 @@ typedef struct
     int functionNameIdx;
     int *parameters; ///< array of parameters
     int argc;
+    int idx;
     bool exec;
 } command_t;
 
@@ -133,12 +134,27 @@ void *bigBrainRealloc(void *ptr, size_t size)
         return tmp;
 }
 
+int insertToSetList(set_t *set, setList_t *sets)
+{
+    sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
+
+    // check for memory error
+    if (sets->sets == NULL)
+    {
+        return errMsg("Allocation failed\n", false);
+    }
+
+    sets->sets[sets->setList_len - 1].set_len = set->set_len;
+    sets->sets[sets->setList_len - 1].items = set->items;
+    sets->sets[sets->setList_len - 1].index = set->index;
+    return true;
+}
+
 /// Decides whether the set is empty or not, and prints the result
 /// \param A a set suspected of being empty
 /// \return true when set is empty and false otherwise
 bool empty(set_t *A)
 {
-
     if (!A->set_len)
     {
         printf("true\n");
@@ -160,31 +176,45 @@ void card(set_t *A)
 /// \param universe the universe over which the set is defined
 /// \param A set of which we want the complement
 /// \return false on failure of an allocation, true on success
-int complement(universe_t *universe, set_t *A)
+int complement(universe_t *universe, setList_t *sets, set_t *A, int index)
 {
     int *wholeSet = NULL;
+    /*
     if (universe->universe_len)
-        wholeSet = bigBrainRealloc(wholeSet, universe->universe_len * sizeof(int));
+        wholeSet = bigBrainRealloc(wholeSet, sizeof(int));
     else if (!universe->universe_len)
         wholeSet = bigBrainRealloc(wholeSet, sizeof(int));
-    if (wholeSet == NULL)
-        return errMsg("Allocation failed\n", false);
+    */
 
-    printf("S");
-    for (int o = 0; o < universe->universe_len; o++)
+    printf("S ");
+    int size = 0;
+    for (int i = 0; i < universe->universe_len; i++) // U a b c //S a b
     {
-        wholeSet[o] = o;
+        int o = 0;
+        for (; o < A->set_len; o++)
+        {
+            if (A->items[o] == i) break;
+        }
+        if (o == A->set_len)
+        {
+            size++;
+            wholeSet = bigBrainRealloc(wholeSet, size *sizeof(int));
+            if (wholeSet == NULL)
+                return errMsg("Allocation failed\n", false);
+            wholeSet[size-1] = i;
+        }
     }
-    for (int o = 0; o < A->set_len; o++)
+    for (int o = 0; o < size; o++)
     {
-        wholeSet[A->items[o]] = -1;
-    }
-    for (int o = 0; o < universe->universe_len; o++)
-    {
-        if (wholeSet[o] != -1)
-            printf(" %s", universe->items[o]);
+        printf("%s ", universe->items[wholeSet[o]]);
     }
     printf("\n");
+    set_t set = {.set_len = size, .items = NULL, .index = index};
+    set.items = bigBrainRealloc(set.items, size*sizeof(int));
+    if(set.items == NULL && size > 0) return errMsg("Allocation failed\n", false);
+
+    memcpy(set.items, wholeSet, size*sizeof(int));
+    insertToSetList(&set, sets);
     free(wholeSet);
     return true;
 }
@@ -194,7 +224,7 @@ int complement(universe_t *universe, set_t *A)
 /// \param A the first set to be put in the union
 /// \param B the second set to be put in the union
 /// \return false on failure of an allocation, true on success
-int Union(universe_t *universe, set_t *A, set_t *B)
+int Union(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
 {
     int len;
     set_t *bigger;
@@ -240,7 +270,7 @@ int Union(universe_t *universe, set_t *A, set_t *B)
             if (o == -1) break;
             len++;
             uni = bigBrainRealloc(uni, len * sizeof(int));
-            if (uni == NULL)
+            if (uni == NULL && len > 0)
                 return errMsg("Allocation failed\n", false);
 
             memcpy(&uni[len - 1], &smaller->items[j-1], sizeof(int));
@@ -252,6 +282,12 @@ int Union(universe_t *universe, set_t *A, set_t *B)
     {
         printf(" %s", universe->items[uni[i]]);
     }
+    set_t set = {.set_len = len, .items = NULL, .index = index};
+    set.items = bigBrainRealloc(set.items, len*sizeof(int)); //FIXME when size is 0 -> leak of 0 bytes
+    if(set.items == NULL && len > 0) return errMsg("Allocation failed\n", false);
+
+    memcpy(set.items, uni, len*sizeof(int));
+    insertToSetList(&set, sets);
     printf("\n");
     free(uni);
     return true;
@@ -261,8 +297,10 @@ int Union(universe_t *universe, set_t *A, set_t *B)
 /// \param universe the universe over which the sets are defined
 /// \param A the first set in the intersection
 /// \param B the second set in the intersection
-void intersect(universe_t *universe, set_t *A, set_t *B)
+int intersect(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
 {
+    int *array = NULL;
+    int size = 0;
 
     printf("S");
     for (int i = 0; i < A->set_len; i++)
@@ -272,11 +310,23 @@ void intersect(universe_t *universe, set_t *A, set_t *B)
             if (A->items[i] == B->items[j])
             {
                 printf(" %s", universe->items[A->items[i]]);
+                array = bigBrainRealloc(array, ++size*sizeof(int));
+                if(array == NULL && size > 0) return errMsg("Allocation failed\n", false);
+
+                array[size-1] = A->items[i];
                 break;
             }
         }
     }
+    set_t set = {.set_len = size, .items = NULL, .index = index};
+    set.items = bigBrainRealloc(set.items, size*sizeof(int));
+    if(set.items == NULL && size > 0) return errMsg("Allocation failed\n", false);
+
+    memcpy(set.items, array, size*sizeof(int));
+    insertToSetList(&set, sets);
     printf("\n");
+    free(array);
+    return true;
 }
 
 /// Prints out the result of a subtraction of a set B from set A
@@ -284,32 +334,40 @@ void intersect(universe_t *universe, set_t *A, set_t *B)
 /// \param A the set from which elements are subtracted
 /// \param B the set containing the subtracted elements
 /// \return false on failure of an allocation, true on success
-int minus(universe_t *universe, set_t *A, set_t *B)
+int minus(universe_t *universe, set_t *A, set_t *B, setList_t *sets, int index)
 {
     int *min = NULL;
-    if (A->set_len)
-        min = bigBrainRealloc(min, A->set_len * sizeof(int));
-    else if (!A->set_len)
-        min = bigBrainRealloc(min, sizeof(int));
-    if (min == NULL)
-        return errMsg("Allocation failed\n", false);
-
-    memcpy(min, A->items, A->set_len * sizeof(int));
+    int size = 0;
 
     printf("S");
     for (int i = 0; i < A->set_len; i++)
     {
+        int status = 0;
         for (int j = 0; j < B->set_len; j++)
         {
             if (A->items[i] == B->items[j])
             {
-                min[i] = EMPTY_INDEX;
+                status = EMPTY_INDEX;
                 break;
             }
         }
-        if (min[i] != EMPTY_INDEX)
-            printf(" %s", universe->items[min[i]]);
+        if (status != EMPTY_INDEX)
+        {
+            printf(" %s", universe->items[A->items[i]]);
+            min = bigBrainRealloc(min, ++size*sizeof(int));
+            if (min == NULL && size > 0)
+                return errMsg("Allocation failed\n", false);
+
+            min[size-1] = A->items[i];
+        }
     }
+    set_t set = {.set_len = size, .items = NULL, .index = index};
+    set.items = bigBrainRealloc(set.items,size*sizeof(int));
+    if(set.items == NULL && size > 0) return errMsg("Allocation failed\n", false);
+
+    memcpy(set.items, min, size*sizeof(int));
+    insertToSetList(&set, sets);
+
     printf("\n");
     free(min);
     return true;
@@ -728,21 +786,6 @@ int readUniverse(universe_t *universe, FILE *file)
     } while (status != END_OF_LINE);
 
     // if the loop finishes, we successfully read the universe
-    return true;
-}
-
-int insertToSetList(set_t *set, setList_t *sets)
-{
-    sets->sets = bigBrainRealloc(sets->sets, ++sets->setList_len * sizeof(set_t));
-
-    // check for memory error
-    if (sets->sets == NULL)
-    {
-        return errMsg("Allocation failed\n", false);
-    }
-
-    sets->sets[sets->setList_len - 1].set_len = set->set_len;
-    sets->sets[sets->setList_len - 1].items = set->items;
     return true;
 }
 
@@ -1312,7 +1355,7 @@ int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int *h
         argc--;
     }
 
-    if (cmd->functionNameIdx >= 0 && cmd->functionNameIdx < SET_FUNCTIONS_LASTINDEX)
+    if (cmd->functionNameIdx >= 0 && cmd->functionNameIdx < SET_FUNCTIONS_LASTINDEX && !(cmd->functionNameIdx < 2 || cmd->functionNameIdx > 5))
     {
         for (int j = 0; j < argc; j++)
         {
@@ -1332,14 +1375,14 @@ int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int *h
             }
         }
     }
-    else if (cmd->functionNameIdx >= REL_FUNCTIONS_LASTINDEX)
+    else if (cmd->functionNameIdx >= REL_FUNCTIONS_LASTINDEX && !(cmd->functionNameIdx < 2 || cmd->functionNameIdx > 5))
     {
         if (findRel(relations, cmd->parameters[0]) == INVALID_INDEX ||
             findSet(sets, cmd->parameters[1]) == INVALID_INDEX ||
             findSet(sets, cmd->parameters[2]) == INVALID_INDEX)
             return false;
     }
-    else   return false;
+    else   return true;
 
     return true;
 }
@@ -1393,7 +1436,7 @@ int readCommands(FILE *file, commandList_t *commands, relationList_t *relations,
         return errMsg("Invalid arguments passed to command\n", false);
     }
 
-    command_t cmd = {.functionNameIdx = funcIdx, .argc = 0, .parameters = NULL, .exec = false};
+    command_t cmd = {.functionNameIdx = funcIdx, .argc = 0, .parameters = NULL, .exec = false, .idx = 0};
     free(command);
 
     if (readArgs(file, &cmd))
@@ -1485,100 +1528,192 @@ int reflexiveClosure(universe_t *universe, relation_t *relation)
 int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, universe_t *universe, int hasBonus, int initSize)
 {
     int cmd, fileSize = initSize + cmds->commandList_len;
-    for (int i = 0; i < cmds->commandList_len; i++)
+    for (int i = initSize; i < fileSize; i++)
     {
-        cmd = cmds->commands[i].functionNameIdx;
-        switch (cmd)
+        cmds->commands[i- initSize].idx = i+2; //initsize is 2 off from the real number
+        cmds->commands[i- initSize].exec = false; //hello valgrind?
+    }
+
+    for (int i = initSize; i < fileSize; i++)
+    {
+        if (i < initSize)
         {
-            case 0:
+            bool printed = false;
+            for(int o = 0; o < sets->setList_len && !printed; o++)
             {
-                if (!empty(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]))
+                if (i == sets->sets[o].index)
                 {
-                    if (cmds->commands[i].argc == 2 && hasBonus)
-                        i = cmds->commands[i].parameters[1] - cmds->commandList_len - 1;
+                    printSet(&sets->sets[o], universe);
+                    printed = true;
                 }
-                break;
             }
-            case 1:
+            for(int o = 0; o < relations->relationList_len && !printed; o++)
             {
-                card(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
-                break;
-            }
-            case 2:
-            {
-                complement(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])]);
-                break;
-            }
-            case 3:
-            {
-                Union(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
-                      &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
-                break;
-            }
-            case 4:
-            {
-                intersect(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
-                          &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
-                break;
-            }
-            case 5:
-            {
-                minus(universe, &sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
-                      &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]);
-                break;
-            }
-            case 6:
-            {
-                if(!subseteq(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
-                         &sets->sets[findSet(sets, cmds->commands[i].parameters[1])], 1))
+                if (i == relations->relations[o].index)
                 {
-                    if (cmds->commands[i].argc == 3 && hasBonus)
-                        i = cmds->commands[i].parameters[2] - cmds->commandList_len - 1;
+                    printRelation(&relations->relations[o], universe);
+                    printed = true;
                 }
-                break;
             }
-            case 7:
-            {
-                if(!subset(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
-                       &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]))
-                {
-                    if (cmds->commands[i].argc == 3 && hasBonus)
-                        i = cmds->commands[i].parameters[2] - cmds->commandList_len - 1;
-                }
-                break;
-            }
-            case 8:
-            {
-                if(!equals(&sets->sets[findSet(sets, cmds->commands[i].parameters[0])],
-                           &sets->sets[findSet(sets, cmds->commands[i].parameters[1])]))
-                {
-                    if (cmds->commands[i].argc == 3 && hasBonus)
-                        i = cmds->commands[i].parameters[2] - cmds->commandList_len - 1;
-                }
-                break;
-            }
-            case 9: reflexive(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 10: symmetric(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 11: antisymmetric(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 12: transitive(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 13: function(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 14: domain(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 15: codomain(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 16: reflexiveClosure(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 17: symmetricClosure(universe, &relations->relations[findRel(relations, cmds->commands[i].parameters[0])]); break;
-            case 18: transitiveClosure(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])], universe); break;
-            case 19: injective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
-                               &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
-                               &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
-            case 20: surjective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
-                                &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
-                                &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
-            case 21: bijective(&relations->relations[findRel(relations, cmds->commands[i].parameters[0])],
-                               &sets->sets[findSet(sets, cmds->commands[i].parameters[1])],
-                               &sets->sets[findSet(sets, cmds->commands[i].parameters[2])] ); break;
-
         }
+        cmd = cmds->commands[i - initSize].functionNameIdx;
+        if (i >= initSize)
+        {
+            if (cmds->commands[i-initSize].exec && cmd < 9)
+            {
+                set_t *set = {0};
+                for (int j = 0; j < sets->setList_len; j++)
+                {
+                    if (cmds->commands[i- initSize].idx == sets->sets[j].index)
+                        set = &sets->sets[j];
+                }
+                printSet(set, universe);
+                continue;
+            }
+            else if (cmds->commands[i-initSize].exec && cmd >= 9)
+            {
+                relation_t  *relation = {0};
+                for (int j = 0; j < relations->relationList_len; j++)
+                {
+                    if(cmds->commands[i-initSize].idx == relations->relations[j].index)
+                        relation = &relations->relations[j];
+                }
+                printRelation(relation, universe);
+                continue;
+            }
 
+            //TODO add default
+            switch (cmd) {
+                case 0: {
+                    if (!empty(&sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 2 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[1] - initSize - 1;
+                    }
+                    break;
+                }
+                case 1: {
+                    card(&sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])]);
+                    break;
+                }
+                case 2: {
+                    complement(universe, sets, &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], cmds->commands[i-initSize].idx);
+                    cmds->commands[i-initSize].exec = true;
+                    break;
+                }
+                case 3: {
+                    Union(universe, &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], sets, cmds->commands[i-initSize].idx);
+                    cmds->commands[i-initSize].exec = true;
+                    break;
+                }
+                case 4: {
+                    intersect(universe, &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], sets, cmds->commands[i-initSize].idx);
+                    cmds->commands[i-initSize].exec = true;
+                    break;
+                }
+                case 5: {
+                    minus(universe, &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], sets, cmds->commands[i-initSize].idx);
+                    cmds->commands[i-initSize].exec = true;
+                    break;
+                }
+                case 6: {
+                    if (!subseteq(&sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], true))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                }
+                case 7: {
+                    if (!subset(&sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                }
+                case 8: {
+                    if (!equals(&sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                }
+                case 9:
+                    if(!reflexive(universe, &relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 10:
+                    if(!symmetric(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 11:
+                    if(!antisymmetric(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 12:
+                    if(!transitive(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 13:
+                    if(!function(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 14:
+                    domain(universe, &relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]);
+                    break;
+                case 15:
+                    codomain(universe, &relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]);
+                    break;
+                case 16:
+                    reflexiveClosure(universe, &relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]);
+                    break;
+                case 17:
+                    symmetricClosure(universe, &relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])]);
+                    break;
+                case 18:
+                    transitiveClosure(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])], universe);
+                    break;
+                case 19:
+                    if(!injective(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[2])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 20:
+                    if(!surjective(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[2])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+                case 21:
+                    if(!bijective(&relations->relations[findRel(relations, cmds->commands[i-initSize].parameters[0])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[1])], &sets->sets[findSet(sets, cmds->commands[i-initSize].parameters[2])]))
+                    {
+                        if (cmds->commands[i-initSize].argc == 3 && hasBonus)
+                            i = cmds->commands[i-initSize].parameters[2] - initSize - 1;
+                    }
+                    break;
+
+            }
+        }
     }
 }
 
