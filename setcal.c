@@ -100,13 +100,13 @@ typedef struct
 /// struct containing all commands in the file
 typedef struct
 {
-    command_t *commands; ///<array of commands>
+    command_t *commands; ///< array of commands
     int commandList_len; ///< count of all commands
 }commandList_t;
 
 
 /// Prints error messages to stderr
-/// \param msg string to be printed to stderr
+/// \param msg a string to be printed to stderr
 /// \param status an integer to be returned by the function
 /// \return a status variable
 int errMsg(char *msg, int status)
@@ -139,7 +139,7 @@ void *bigBrainRealloc(void *ptr, size_t size)
 }
 
 /// Checks for space between U, R, S and it's contents
-/// \param file file to be read from
+/// \param file the file to be read from
 /// \return DELIM when a space is present
 /// \return true when a newline is present (special condition for empty sets, ...)
 /// \return false when no space or newline is present
@@ -154,7 +154,7 @@ int testSpace(FILE *file)
 
 
 /// Function for reading strings seperated by whitespace from the specified file
-/// \param file file to be read from
+/// \param file the file to be read from
 /// \param string container for the new string
 /// \return false when an error occurs during reading
 /// \return true when a string is successfully read
@@ -257,7 +257,7 @@ int insertIntoCommandList(commandList_t *commands, command_t *command, int lineI
 /// \param str new universe item to be validated
 /// \param universe list of already existing universe items
 /// \return true when the item meets all criteria (no duplicates, only alphabetical characters, no function names, true, false)
-/// \return false when at least one criterium is not fulfilledcc
+/// \return false when at least one criterium is not fulfilled
 int checkUniverse(char *str, universe_t *universe)
 {
     for (int i = 0, n = strlen(str); i < n; i++)
@@ -281,8 +281,8 @@ int checkUniverse(char *str, universe_t *universe)
 }
 
 /// Reads and validates the universe contents
-/// \param universe struct where the contents are saved
-/// \param file file to be read from
+/// \param universe a universe struct where the contents are saved
+/// \param file the file to be read from
 /// \return true when no error occurs during reading, false otherwise
 /// \return EMPTY_INDEX when trailing whitespace is present
 int readUniverse(universe_t *universe, FILE *file)
@@ -324,18 +324,17 @@ int readUniverse(universe_t *universe, FILE *file)
         }
     } while (status != END_OF_LINE);
 
-    // if the loop finishes, we successfully read the universe
+    // if the loop finishes, we have successfully read the universe
     return true;
 }
 
-/// Read universe and append it in set structure to the setList, so it can be used in the same way as a regular set
+/// Reads universe and append it in set structure to the setList, so it can be used in the same way as a regular set
 /// \param universe the universe
 /// \param sets structure containing all sets in the file
-/// \param file file to be read from
+/// \param file the file to be read from
 /// \return true when no error occurs during reading, false otherwise
 int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
 {
-    // read universe
     int status = readUniverse(universe, file);
 
     if (status)
@@ -362,10 +361,10 @@ int appendUniverse(universe_t *universe, setList_t *sets, FILE *file)
     else return false;
 }
 
-/// Find the index of the specified string from the universe
+/// Finds the index of the specified string from the universe
 /// \param str the string whose index we are looking for
-/// \param universe the universe in which we are finding the index
-/// \return the index when the universe contains such item, otherwise returns INVALID_INDEX
+/// \param universe the universe in which we are looking for the index
+/// \return the index of the wanted item from the universe, otherwise INVALID_INDEX
 int findUniverseIndex(char *str, universe_t *universe)
 {
     for (int i = 0; i < universe->universe_len; i++)
@@ -380,10 +379,10 @@ int findUniverseIndex(char *str, universe_t *universe)
     return INVALID_INDEX;
 }
 
-/// Check whether a relation contains the specified relation pair
+/// Checks whether a relation contains the specified relation pair
 /// \param relation the relation in which we are searching
 /// \param unit the relation pair we are looking for in the relation
-/// \return the index when the relation contains such relation pair, otherwise returns INVALID_INDEX
+/// \return the index of the wanted relation pair in the relation, otherwise INVALID_INDEX
 int containsRelationUnit(relation_t *relation, relationUnit_t *unit)
 {
     for (int i = 0; i < relation->relation_len; i++)
@@ -396,7 +395,7 @@ int containsRelationUnit(relation_t *relation, relationUnit_t *unit)
     return INVALID_INDEX;
 }
 
-/// Parse a relation pair from the specified file
+/// Parses a relation pair from the specified file
 /// \param unit container for the relation pair to be read
 /// \param file the file to be read from
 /// \param universe the universe the members of the pair have to be part of
@@ -449,7 +448,7 @@ int readRelationUnit(relationUnit_t *unit, FILE *file, universe_t *universe)
     return statusY;
 }
 
-/// Parse an entire relation from the specified file
+/// Parses an entire relation from the specified file
 /// \param relation container for the relation to be read
 /// \param file the file to be read from
 /// \param universe the universe the members of the relation have to be part of
@@ -499,7 +498,7 @@ int readRelation(relation_t *relation, FILE *file, universe_t *universe)
     return true;
 }
 
-/// Parse a set item from the specified file
+/// Parses a set item from the specified file
 /// \param idx container for the set item to be read
 /// \param file the file to be read from
 /// \param universe the universe the set item has to be part of
@@ -531,7 +530,7 @@ int readSetItem(int *idx, FILE *file, universe_t *universe)
     return status;
 }
 
-/// Parse an entire set from the specified file
+/// Parses an entire set from the specified file
 /// \param set container for the set to be read
 /// \param file the file to be read from
 /// \param universe the universe the members of the set have to be part of
@@ -1065,7 +1064,7 @@ bool codomain(universe_t *uni, relation_t *R, set_t *dest)
     return true;
 }
 
-/// Print the universe contents to stdout
+/// Prints the universe contents to stdout
 /// \param universe the universe to be printed
 void printUniverse(universe_t *universe)
 {
@@ -1077,7 +1076,7 @@ void printUniverse(universe_t *universe)
     printf("\n");
 }
 
-/// Print set contents to stdout
+/// Prints set contents to stdout
 /// \param set the set to be printed
 /// \param universe the universe the set members belong to
 void printSet(set_t *set, universe_t *universe)
@@ -1100,7 +1099,7 @@ void printSet(set_t *set, universe_t *universe)
     printf("\n");
 }
 
-/// Print relation contents to stdout
+/// Prints relation contents to stdout
 /// \param relation the relation to be printed
 /// \param universe the universe the relation members belong to
 void printRelation(relation_t *relation, universe_t *universe)
@@ -1138,7 +1137,7 @@ void printFile(universe_t *universe, relationList_t *relations, setList_t *sets)
     while (j < sets->setList_len) printSet(&sets->sets[j++], universe);
 }
 
-///Checks if the relation members are part of the set
+///Checks whether the relation members are part of the set
 /// \param R relation that we are checking
 /// \param S set that is part of a relation on a first/second position
 /// \param memberPosition position of a set in a relation (x,y)
@@ -1208,12 +1207,12 @@ bool isRelDomainComplete(relation_t *R, set_t *S)
 
 /// Prints true when the relation function is injective and false otherwise
 /// \param R relation of the sets (A,B)
-/// \param A set in a relation with the B
-/// \param B set in a relation with the A
+/// \param A set indicating the domain of a function
+/// \param B set indicating the codomain of a function
 /// \return true when the relation is injective, false otherwise
-bool injective(relation_t *R, set_t *S1, set_t *S2)
+bool injective(relation_t *R, set_t *A, set_t *B)
 {
-    if ((areRelationMembersInSet(R, S1, 1) && areRelationMembersInSet(R, S2, 2)) && isRelDomainComplete(R, S1))
+    if ((areRelationMembersInSet(R, A, 1) && areRelationMembersInSet(R, B, 2)) && isRelDomainComplete(R, A))
     {
         for (int i = 0; i < R->relation_len; i++)
         {
@@ -1237,25 +1236,25 @@ bool injective(relation_t *R, set_t *S1, set_t *S2)
 
 /// Prints true when the relation function is surjective and false otherwise
 /// \param R relation of the sets (A,B)
-/// \param A set in a relation with the B
-/// \param B set in a relation with the A
+/// \param A set indicating the domain of a function
+/// \param B set indicating the codomain of a function
 /// \return true when the relation is surjective, false otherwise
-bool surjective(relation_t *R, set_t *S1, set_t *S2)
+bool surjective(relation_t *R, set_t *A, set_t *B)
 {
-    if (S1->set_len < S2->set_len)
+    if (A->set_len < B->set_len)
     {
         printf("false\n");
         return false;
     }
 
-    if ((areRelationMembersInSet(R, S1, 1) && areRelationMembersInSet(R, S2, 2)) && isRelDomainComplete(R, S1))
+    if ((areRelationMembersInSet(R, A, 1) && areRelationMembersInSet(R, B, 2)) && isRelDomainComplete(R, A))
     {
-        for (int i = 0; i < S2->set_len; i++)
+        for (int i = 0; i < B->set_len; i++)
         {
             bool status = false;
             for (int j = 0; j < R->relation_len; j++)
             {
-                if (S2->items[i] == R->items[j].y)
+                if (B->items[i] == R->items[j].y)
                 {
                     status = true;
                 }
@@ -1277,14 +1276,14 @@ bool surjective(relation_t *R, set_t *S1, set_t *S2)
 
 /// Prints true when the relation function is bijective and false otherwise
 /// \param R relation of the sets (A,B)
-/// \param A set in a relation with the B
-/// \param B set in a relation with the A
+/// \param A a set indicating the domain of a function
+/// \param B a set indicating the codomain of a function
 /// \return true when the relation is bijective, false otherwise
-bool bijective(relation_t *R, set_t *S1, set_t *S2)
+bool bijective(relation_t *R, set_t *A, set_t *B)
 {
-    if ((areRelationMembersInSet(R, S1, 1) && areRelationMembersInSet(R, S2, 2)) && isRelDomainComplete(R, S1))
+    if ((areRelationMembersInSet(R, A, 1) && areRelationMembersInSet(R, B, 2)) && isRelDomainComplete(R, A))
     {
-        if (S1->set_len == S2->set_len)
+        if (A->set_len == B->set_len)
         {
             for (int i = 0; i < R->relation_len; i++)
             {
@@ -1297,12 +1296,12 @@ bool bijective(relation_t *R, set_t *S1, set_t *S2)
                     }
                 }
             }
-            for (int i = 0; i < S2->set_len; i++)
+            for (int i = 0; i < B->set_len; i++)
             {
                 bool status = false;
                 for (int j = 0; j < R->relation_len; j++)
                 {
-                    if (S2->items[i] == R->items[j].y)
+                    if (B->items[i] == R->items[j].y)
                     {
                         status = true;
                     }
@@ -1403,8 +1402,8 @@ int closure_sym(relation_t *relation, universe_t *universe, relation_t *dest)
     return true;
 }
 
-/// Prints a transitive  closure of the relation
-/// \param relation a relation in which we want a transitive  closure
+/// Prints a transitive closure of the relation
+/// \param relation a relation in which we want a transitive closure
 /// \param universe the universe over which the relation is defined
 /// \param dest a relation where the result of the transitive  closure is stored
 /// \return false on failure of an allocation, true on success
@@ -1449,7 +1448,7 @@ int closure_trans(relation_t *relation, universe_t *universe, relation_t *dest)
 /// \param rel the relation from which we choose the random item
 /// \param set the set from which we choose the random item
 /// \param universe the universe over which the relation/set are defined
-/// \param dest the set to which is the resulting one-item set stored
+/// \param dest the set to which the resulting one-item set is stored
 /// \return true if an item is successfully printed, false if the argument passed is an empty relation or set
 int select_rand(relation_t *rel, set_t *set, universe_t *universe, set_t *dest)
 {
@@ -1466,7 +1465,7 @@ int select_rand(relation_t *rel, set_t *set, universe_t *universe, set_t *dest)
 
         dest->items[0] = rel->items[random].x;
         dest->set_len = 1;
-        
+
         return true;
     }
     else if (set != NULL && set->set_len != 0 && rel == NULL) // a set was passed
@@ -1485,12 +1484,12 @@ int select_rand(relation_t *rel, set_t *set, universe_t *universe, set_t *dest)
     else // empty relation or empty set
     {
         return false;
-    } 
+    }
 }
 
 
 /// Finds a matching string in the list of functions
-/// \param command string with a command
+/// \param command a string with a command
 /// \return an index of a function in a list if string was found, otherwise -1
 int matchStringToFunc(char *command)
 {
@@ -1616,10 +1615,10 @@ int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int fi
             }
         }
     }
-    else if (cmd->functionNameIdx == COMBINED_FUNCTIONS_LASTINDEX - 1)
+    else if (cmd->functionNameIdx == COMBINED_FUNCTIONS_LASTINDEX - 1) // for select
     {
         if (findRel(relations, cmd->parameters[0], cmds, emptR) == INVALID_INDEX &&
-        findSet(sets, cmd->parameters[0], cmds, emptS) == INVALID_INDEX)
+            findSet(sets, cmd->parameters[0], cmds, emptS) == INVALID_INDEX)
             return false;
     }
     else if (cmd->functionNameIdx >= REL_FUNCTIONS_LASTINDEX)
@@ -1634,7 +1633,7 @@ int checkArgs(command_t *cmd, setList_t *sets, relationList_t *relations, int fi
     return true;
 }
 
-/// Read the arguments passed to a command and save them to the corresponding command_t parameters
+/// Reads the arguments passed to a command and save them to the corresponding command_t parameters
 /// \param file the file to be read from
 /// \param command the commands whose arguments are read
 /// \return true if the reading is successful, false otherwise
@@ -1670,11 +1669,11 @@ int readArgs(FILE *file, command_t *command)
     return true;
 }
 
-/// Read a command definition from the specified file
+/// Reads a command definition from the specified file
 /// \param file the file to be read from
 /// \param commands the list of commands where the newly read command will be added
 /// \param lineIndex the line number on which the command is defined
-/// \return true if reading is successfull, false otherwise
+/// \return true if reading is successful, false otherwise
 int readCommands(FILE *file, commandList_t *commands, int lineIndex)
 {
     if (testSpace(file) != DELIM) return false;
@@ -1698,17 +1697,16 @@ int readCommands(FILE *file, commandList_t *commands, int lineIndex)
     {
         return true;
     }
-    else
+    else if (cmd.argc > 0)
     {
         free(cmd.parameters);
         return false;
     }
-    if (cmd.argc > 0) free(cmd.parameters);
 
     return true;
 }
 
-/// Free all dynamically allocated memory the universe
+/// Frees all dynamically allocated memory of the universe
 /// \param universe the universe to be freed
 void freeUniverse(universe_t *universe)
 {
@@ -1719,7 +1717,7 @@ void freeUniverse(universe_t *universe)
     free(universe->items);
 }
 
-/// Free all dynamically allocated memory for sets
+/// Frees all dynamically allocated memory for sets
 /// \param sets the setList to be freed
 void freeSets(setList_t *sets)
 {
@@ -1736,7 +1734,7 @@ void freeSets(setList_t *sets)
     free(sets->sets);
 }
 
-/// Free all dynamically allocated memory for relations
+/// Frees all dynamically allocated memory for relations
 /// \param relations the relationList to be freed
 void freeRelations(relationList_t *relations)
 {
@@ -1753,7 +1751,7 @@ void freeRelations(relationList_t *relations)
     free(relations->relations);
 }
 
-/// Free all dynamically allocated memory for commandss
+/// Frees all dynamically allocated memory for commands
 /// \param commands the commandList to be freed
 void freeCommands(commandList_t *commands)
 {
@@ -1766,7 +1764,7 @@ void freeCommands(commandList_t *commands)
     free(commands->commands);
 }
 
-/// Free all dynamically allocated memory in the program
+/// Frees all dynamically allocated memory in the program
 /// \param universe the universe to be freed
 /// \param relations the relationList to be freed
 /// \param sets the setList to be freed
@@ -1821,21 +1819,21 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
         cmd = cmds->commands[i-initSize].functionNameIdx;
         if (i >= initSize)
         {
-            if (cmds->commands[i - initSize].morphed && cmd < 9) 
+            if (cmds->commands[i - initSize].morphed && (cmd < 9 || cmd == 22))
             {
                 set_t *set = {0};
-                for (int j = 0; j < sets->setList_len; j++) 
+                for (int j = 0; j < sets->setList_len; j++)
                 {
                     if (cmds->commands[i - initSize].idx == sets->sets[j].index)
                         set = &sets->sets[j];
                 }
                 printSet(set, universe);
                 continue;
-            } 
-            else if (cmds->commands[i - initSize].morphed && cmd >= 9) 
+            }
+            else if (cmds->commands[i - initSize].morphed && cmd >= 9)
             {
                 relation_t *relation = {0};
-                for (int j = 0; j < relations->relationList_len; j++) 
+                for (int j = 0; j < relations->relationList_len; j++)
                 {
                     if (cmds->commands[i - initSize].idx == relations->relations[j].index)
                         relation = &relations->relations[j];
@@ -2080,7 +2078,7 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
                 break;
             case 22:
             {
-                relation_t *r; set_t *s, set;
+                relation_t *r = NULL; set_t *s = NULL, set;
                 int idxS = findSet(sets, cmds->commands[i-initSize].parameters[0], cmds, &emptS);
                 int idxR = findRel(relations, cmds->commands[i-initSize].parameters[0], cmds, &emptR);
                 if (emptS != 0 || emptR != 0)
@@ -2103,9 +2101,10 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
                     if (cmds->commands[i-initSize].argc == 2)
                         i = cmds->commands[i-initSize].parameters[1] - 2;
                 }
-                else if (insertToSetList(&set, sets)) 
+                else if (insertToSetList(&set, sets))
                     sets->sets[sets->setList_len - 1].index = cmds->commands[i-initSize].idx;
                 else return false;
+                cmds->commands[i-initSize].morphed = true;
                 break;
             }
             default: return false;
@@ -2204,7 +2203,7 @@ int readFile(FILE *file, universe_t *universe, relationList_t *relations, setLis
     return !execute(commands, sets, relations, universe, hasRorS, count);
 }
 
-/// Parse input arguments and open file for reading
+/// Parses input arguments and open file for reading
 /// \param argc number of command line arguments passed to the program
 /// \param argv list of the arguments passed
 /// \return 0 if the file is successfully opened and read
@@ -2226,7 +2225,7 @@ int main(int argc, char **argv)
             destructor(&universe, &relations, &sets, f, &commands);
             return status;
         }
-        else 
+        else
         {
             fprintf(stderr, "Error opening file %s.\n", argv[1]);
             return EXIT_FAILURE;
