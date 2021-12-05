@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////////
+/////                Projekt 2                   /////
+//////////////////////////////////////////////////////
+/////                Skupina 1                   /////
+/////   xkubin27, xphamo00, xpetri25, xkalen07   /////
+//////////////////////////////////////////////////////
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -1846,7 +1853,7 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
                 return errMsg("Invalid arguments passed to function.\n", false);
             }
         }
-
+        cmds->commands[i-initSize].exec = true;
 
         switch (cmd)
         {
@@ -2109,7 +2116,6 @@ int execute(commandList_t *cmds, setList_t *sets, relationList_t *relations, uni
             }
             default: return false;
         }
-        cmds->commands[i-initSize].exec = true;
     }
     return true;
 }
