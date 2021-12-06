@@ -1,9 +1,0 @@
-U a b c x y z
-S a b c x
-S x y z
-R (x y)
-R (x y) (y z)
-C minus 1 2
-C empty 1
-C symmetric 5
-C
